@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>NOVA OS — Prototype</title>
+<meta name="description" content="NOVA OS interactive prototype — Dynamic Space, NOVA CORE, FLOW, CANVAS and the NOVA MOTION engine." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="styles/tokens.css" />
+<link rel="stylesheet" href="styles/shell.css" />
+<link rel="stylesheet" href="styles/surfaces.css" />
+</head>
+<body data-mode="dark">
+
+<div class="stage">
+  <!-- ─────────────────────────  DEVICE  ───────────────────────── -->
+  <div class="device-wrap">
+    <div class="device" id="device">
+      <div class="device-notch" aria-hidden="true"></div>
+      <div class="screen" id="screen">
+        <div class="layer wallpaper" id="layer-wallpaper" aria-hidden="true"></div>
+        <div class="layer" id="layer-home"></div>
+        <div class="layer" id="layer-apps"></div>
+        <div class="layer" id="layer-split"></div>
+        <div class="layer" id="layer-canvas"></div>
+        <div class="layer panel-layer" id="layer-panels"></div>
+        <div class="layer" id="layer-overlay"></div>
+        <div class="layer" id="layer-lock"></div>
+        <div class="status" id="statusbar"></div>
+        <div class="edge-hint edge-hint--bottom" id="hint-bottom" aria-hidden="true"><span></span></div>
+        <div class="edge-hint edge-hint--top" id="hint-top" aria-hidden="true"><span></span></div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+    <p class="device-caption" id="gesture-caption">
+      اسحب من الأسفل <b>NOVA CORE</b> · من الأعلى <b>FLOW</b> · من الحافة اليمنى <b>رجوع</b> · من الزاوية <b>CONTROL</b>
+    </p>
+  </div>
+
+  <!-- ─────────────────────────  CONTROL DECK  ───────────────────────── -->
+  <aside class="deck" id="deck">
+    <header class="deck__brand">
+      <div class="deck__logo">◉</div>
+      <div>
+        <h1>NOVA OS</h1>
+        <p>A New Way to Use Your Phone</p>
+      </div>
+    </header>
+
+    <section class="deck__group">
+      <h2>NOVA MOTION — Profile</h2>
+      <div class="chips" id="chips-profile"></div>
+      <p class="deck__hint" id="profile-note"></p>
+    </section>
+
+    <section class="deck__group">
+      <h2>Motion Theme</h2>
+      <div class="chips" id="chips-theme"></div>
+      <p class="deck__hint" id="theme-note"></p>
+    </section>
+
+    <section class="deck__group">
+      <h2>Appearance</h2>
+      <div class="chips" id="chips-mode"></div>
+      <div class="chips" id="chips-accent"></div>
+    </section>
+
+    <section class="deck__group">
+      <h2>Scenarios</h2>
+      <div class="deck__grid" id="deck-actions"></div>
+    </section>
+
+    <section class="deck__group deck__group--stats">
+      <h2>Live motion telemetry</h2>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <footer class="deck__foot">
+      <p>Phase 1 prototype · <code>docs/02-motion-language.md</code> is the contract.</p>
+    </footer>
+  </aside>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
