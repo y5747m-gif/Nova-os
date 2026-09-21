@@ -46,14 +46,18 @@ native things a browser can't do:
 ### 2.1 Build it without a computer (GitHub Actions — recommended)
 
 > **Already built and verified:** the workflow has run on this repository and published
-> `nova-os-latest.apk` — 4,518,806 bytes, SHA-256
-> `fbf5807c0cc6bf970f49cc5b52927064103d9b61174c094681a1faf3f96087b0`.
-> The release notes contain a machine-generated report from
+> `nova-os-latest.apk` (~4.31 MB). The release notes carry a machine-generated report from
 > `node tools/inspect-apk.mjs` proving the file is installable: package `os.nova.launcher`,
 > versionName 0.1.0, minSdk 26 / target 34, launchable `MainActivity`, **signed with APK Signature
 > Scheme v2** (see the note below), and 38 `assets/www` files (version 0.1.0) carrying the web app.
 > Open **Releases → NOVA OS — APK (latest)** on your phone and install it, or just tap
 > **تحميل APK** inside NOVA — it resolves the same asset.
+>
+> That report also prints the exact **size and SHA-256 of the file you are about to install**, and
+> `SHA256SUMS.txt` / `VERIFIED.md` sit next to the APK. They are deliberately not copied into this
+> document: every build re-signs the package, so two builds of identical code differ by a few bytes
+> and their hashes differ with them. Read the hash from the release you downloaded, not from here —
+> `sha256sum nova-os-latest.apk` must match the value in that release's notes.
 
 > **About the signature:** these builds are signed with the standard Android *debug* key, so the
 > report says "v2" and nothing else. That is a real, installable signature — Android accepts it as
