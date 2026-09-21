@@ -21,6 +21,7 @@
 | NOVA CONTROL (radial) + lock screen + AOD | ✅ |
 | Sound set + haptics language | ✅ (WebAudio synth) |
 | Kotlin/Compose port of `NovaMotion` | ⏳ Phase 2 start |
+| Installable web app (PWA) + Android APK shell | ✅ `android/`, `docs/06-install.md` |
 
 **Exit criteria**
 
@@ -28,6 +29,22 @@
 2. Zero dropped frames at 60 Hz on a mid-range device (web: 60 fps on a 4-year-old laptop).
 3. `Reduced Motion` profile is complete and pleasant (not "broken animations").
 4. 5 curated motion themes feel *different*, not just faster.
+
+## Phase 1.5 — Installable build (delivered alongside Phase 1)
+
+`docs/06-install.md`. Two working paths so the experience can leave the browser:
+
+- Installable web app (manifest + service worker, offline shell, home-screen icon, deep links).
+- **Android APK**: `android/` — a full-screen WebView shell that serves `assets/www` through
+  `WebViewAssetLoader`, with edge-to-edge insets handed to CSS, hardware/gesture **Back** routed
+  into NOVA's own navigation, a `CATEGORY_HOME` entry (NOVA can be the home screen), adaptive
+  launcher icons, a notification bridge, opt-in boot launch, and a self-update path
+  (GitHub Releases → cache → `FileProvider` → system installer).
+- CI (`.github/workflows/apk.yml`) runs the quality gates, builds with Gradle 8.9/AGP 8.5.2/JDK 17
+  and publishes `nova-os-latest.apk` + a numbered copy + checksums as release assets — the exact
+  thing the in-app **تحميل APK** button looks for.
+- Known limits are stated in the guide: debug-signed prototype, no cross-app window control,
+  no iOS APK (PWA there), notifications of other apps stay Android's.
 
 ## Phase 2 — Launcher / System Experience (daily driver)
 
@@ -78,7 +95,8 @@ met on-device, and Path-A and Path-B produce visually identical motion (same spe
 ## Immediate next steps (after this repo's Phase 1)
 
 1. Port `NovaMotion` (springs + tokens + profiles) to Kotlin and unit-test against the same
-   golden curves used by the web engine.
+   golden curves used by the web engine. (The APK shell already proves the packaging, insets,
+   Back routing, notifications and self-update paths — the Compose port replaces its rendering.)
 2. Build a 6-screen Compose shell: Lock, Dynamic Space, Surface, CORE, FLOW, CANVAS.
 3. Instrument the 12 golden flows with frame-time histograms on a Pixel 6a-class device.
 4. Run the first 5-person usability study (send a photo, resume a workspace, defer an event).

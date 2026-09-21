@@ -86,7 +86,7 @@ Home Card ──▶ Lift ──▶ Expand ──▶ Morph ──▶ Application 
 
 | Zone | Gesture | Result |
 | --- | --- | --- |
-| Right edge | drag left→right (RTL aware) | **Back**, progress-driven. Current surface translates/scales, previous surface peeks behind it. Cancel returns smoothly. |
+| Right edge | drag left→right (RTL aware) | **Back**, progress-driven. Current surface translates/scales, previous surface peeks behind it. Cancel returns smoothly. Hardware/gesture Back follows the identical rule: an app returns to the surface it was opened *from* (home, or the canvas it came out of). |
 | Bottom | drag up | **NOVA CORE** (two-stage: peek at 30 %, commit at 55 % + velocity) |
 | Top | drag down | **NOVA FLOW** (two-stage, same thresholds) |
 

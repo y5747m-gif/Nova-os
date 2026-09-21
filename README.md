@@ -27,8 +27,32 @@
 | `docs/04-roadmap.md` | The 4 phases: Prototype → System Experience → ROM → Device, with exit criteria and risks. |
 | `docs/05-design-tokens.md` | Color (dark/light), typography, spacing, radii, elevation, sound set, haptic set. |
 | `prototype/` | Zero-dependency interactive web prototype of the NOVA experience (Arabic RTL UI). |
-| `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks. |
+| `docs/06-install.md` | PWA install, APK build (CI + local), signing, self-update, known limits. |
+| `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks, icon + asset staging, version bump. |
 | `package.json` | `npm run serve` + `npm run check`. |
+
+## Install it on a phone
+
+Two real paths — full guide in **`docs/06-install.md`**:
+
+1. **Right now, as an app (PWA).** Open the NOVA URL on your phone → inside NOVA:
+   **تحميل على الهاتف → ثبّت الآن**. It lands on the home screen, opens full-screen and works
+   offline after the first load. iPhone: open in Safari → Share → *Add to Home Screen*.
+2. **As an Android APK (`android/`).** A real full-screen WebView shell (edge-to-edge insets,
+   hardware Back wired into NOVA's navigation, launcher entry, notification bridge, self-update).
+   CI builds it: **Actions → Build NOVA OS APK → Run workflow** →
+   the APK appears under **Releases** as `nova-os-latest.apk`. The in-app **تحميل APK** button
+   finds that asset automatically and, inside the app, downloads it and opens the system installer.
+   Locally: `bash tools/stage-assets.sh && cd android && gradle assembleDebug`.
+
+| File | What it is |
+| --- | --- |
+| `prototype/manifest.webmanifest`, `prototype/sw.js` | Installable web app + offline shell. |
+| `android/` | The APK project (Kotlin, AGP 8.5, minSdk 26, WebViewAssetLoader). |
+| `.github/workflows/apk.yml` | Builds the APK, runs the quality gates, publishes the release asset. |
+| `tools/stage-assets.sh` | Copies the web experience into the APK assets. |
+| `tools/make-icons.sh` | Regenerates every launcher/PWA icon from the icon master. |
+| `tools/bump-version.mjs` | One command keeps `VERSION`, `version.js` and `sw.js` in sync. |
 
 ## Run the prototype
 
@@ -41,12 +65,18 @@ npm run serve          # python3 -m http.server 8080 --bind 0.0.0.0 --directory 
 No build step and no runtime dependencies — plain ES modules + CSS. (Google Fonts is the only
 network request, for IBM Plex Sans Arabic; the CSS falls back to system fonts offline.)
 
+### Phone layout on a desktop
+
+Open `…/index.html?shell=app` to preview exactly what the APK shows: no device frame, no deck,
+safe-area insets, full-screen surfaces.
+
 ### On a desktop, use the control deck
 
 The panel next to the phone drives everything a thumb would: motion profile, motion theme,
 NOVA Dark / Paper, accent packs, and 12 scenarios (new event, media, canvas, FLOW, CORE, CONTROL,
 resume workspace, power menu, privacy, AOD, lock, sweep). Keyboard: `K` CORE · `F` FLOW · `C` canvas ·
-`E` event · `M` media · `R` resume · `P` power · `L` lock · `S` sweep · `Esc` back.
+`E` event · `M` media · `R` resume · `P` power · `L` lock · `S` sweep · `I` install · `U` apply update ·
+`Esc` back.
 
 ## Checks
 
@@ -60,7 +90,7 @@ npm run check    # the four gates below
 | `npm run check:motion` | Motion lint: no hand-rolled rAF, no ad-hoc easing, no inline transitions outside the engine. |
 | `npm run check:classes` | Every class the JS builds exists in the CSS (no silent unstyled surface). |
 | `npm run check:springs` | 109 physics assertions: every profile × theme stays inside the 6 % overshoot budget, settles in time, and Reduced Motion is critically damped with no blur/arcs. |
-| `npm run check:experience` | 35 assertions driving the real modules through jsdom: unlock, morph, interactive back, CORE, FLOW, orb, canvas, drag & drop, split flow, sweep, the whole config matrix. |
+| `npm run check:experience` | 50 assertions driving the real modules through jsdom: unlock, morph, interactive back, NovaBack's whole stack, CORE, FLOW, orb, canvas, drag & drop, split flow, sweep, the install sheet, the config matrix, and version/manifest consistency. |
 
 ## The prototype covers
 

@@ -3,7 +3,17 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>NOVA OS — Prototype</title>
+<title>NOVA OS — A New Way to Use Your Phone</title>
+<meta name="theme-color" content="#07080B" />
+<meta name="color-scheme" content="dark light" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="NOVA" />
+<meta name="application-name" content="NOVA OS" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <meta name="description" content="NOVA OS interactive prototype — Dynamic Space, NOVA CORE, FLOW, CANVAS and the NOVA MOTION engine." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -11,8 +21,10 @@
 <link rel="stylesheet" href="styles/tokens.css" />
 <link rel="stylesheet" href="styles/shell.css" />
 <link rel="stylesheet" href="styles/surfaces.css" />
+<link rel="stylesheet" href="styles/install.css" />
+<link rel="stylesheet" href="styles/shell-android.css" />
 </head>
-<body data-mode="dark">
+<body data-mode="dark" data-shell="web">
 
 <div class="stage">
   <!-- ─────────────────────────  DEVICE  ───────────────────────── -->
@@ -68,6 +80,12 @@
     </section>
 
     <section class="deck__group">
+      <h2>Install on your phone</h2>
+      <div class="chips" id="deck-install"></div>
+      <p class="deck__hint" id="install-note"></p>
+    </section>
+
+    <section class="deck__group">
       <h2>Scenarios</h2>
       <div class="deck__grid" id="deck-actions"></div>
     </section>
@@ -78,7 +96,8 @@
     </section>
 
     <footer class="deck__foot">
-      <p>Phase 1 prototype · <code>docs/02-motion-language.md</code> is the contract.</p>
+      <p>Phase 1 prototype · <code>docs/02-motion-language.md</code> is the contract.<br />
+      <a href="docs/06-install.md" style="display:none"></a>Install guide: <code>docs/06-install.md</code></p>
     </footer>
   </aside>
 </div>

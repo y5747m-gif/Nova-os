@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NOVA OS</string>
+    <string name="channel_events">NOVA FLOW — أحداث</string>
+    <string name="channel_system">NOVA — النظام</string>
+    <string name="notif_update_title">تحديث NOVA OS جاهز</string>
+    <string name="notif_update_text">نسخة جديدة متاحة — اضغط للتحميل</string>
+</resources>

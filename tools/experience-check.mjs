@@ -78,6 +78,11 @@ const mmShim = (q) => ({ matches: false, media: q, onchange: null, addEventListe
 window.matchMedia = mmShim;
 g.matchMedia = mmShim;
 Object.defineProperty(g, 'navigator', { value: window.navigator, configurable: true });
+g.location = window.location;
+g.history = window.history;
+g.innerWidth = 390;
+g.innerHeight = 844;
+g.AbortController = globalThis.AbortController;
 
 
 /* jsdom 25 has no PointerEvent constructor — build one either way. */
@@ -96,6 +101,32 @@ function check(name, cond, extra = '') {
   results.push({ name, ok: !!cond, extra });
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${name}${extra ? ' — ' + extra : ''}`);
 }
+
+/** Walk NOVA's own back stack down to the home surface. */
+async function goHome() {
+  let guard = 8;
+  while (window.NOVA && window.NOVA.state.surface !== 'home' && guard-- > 0) {
+    if (window.NOVA.state.surface === 'lock') {
+      dragGest(195, 700, 195, 120);                     // the unlock gesture
+    } else {
+      window.document.getElementById('screen')
+        .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    }
+    await new Promise((r) => setTimeout(r, 700));
+  }
+  return window.NOVA?.state.surface;
+}
+
+/* the install sheet talks to the GitHub releases API: stub it so the check is
+   deterministic and offline (the real call is exercised manually). */
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, opts) => {
+  if (String(url).includes('api.github.com')) {
+    return new Response(JSON.stringify([]), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
+  return realFetch(url, opts);
+};
+window.fetch = globalThis.fetch;
 
 await import(`file://${ROOT}/src/main.js`);
 await new Promise((r) => setTimeout(r, 300));
@@ -262,11 +293,9 @@ check('canvas parked while its app is open', canvasEl.style.pointerEvents === 'n
 dragGest(388, 400, 180, 400, 14);
 await new Promise((r) => setTimeout(r, 1000));
 check('back from a canvas app returns to the canvas', N.state.surface === 'canvas', N.state.surface);
-N.runAction('canvas');
-await new Promise((r) => setTimeout(r, 600));
-window.document.getElementById('screen').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-await new Promise((r) => setTimeout(r, 1400));
+await goHome();
 check('canvas releases touches after hiding', canvasEl.style.pointerEvents === 'none', canvasEl.style.pointerEvents || 'auto');
+check('back stack walked home', N.state.surface === 'home', N.state.surface);
 
 /* ── the lock screen must not leak home touches ─────────────────── */
 N.runAction('lock');
@@ -274,6 +303,53 @@ await new Promise((r) => setTimeout(r, 300));
 check('lock surface restores home behind it', window.document.querySelector('#layer-home .home').dataset.hidden === '0');
 
 await new Promise((r) => setTimeout(r, 400));
+/* ── install sheet + NovaBack + native shell hooks ───────────────── */
+await goHome();
+N.runAction('install');
+await new Promise((r) => setTimeout(r, 400));
+const sheet = window.document.querySelector('.install-sheet');
+check('install sheet opens', !!sheet);
+check('install sheet offers PWA + APK', !!window.document.querySelector('#install-pwa') && !!window.document.querySelector('#install-apk'));
+check('install sheet explains the APK', (sheet?.textContent || '').includes('APK'));
+check('NovaBack closes the sheet first', N.back() === true && !window.document.querySelector('.install-sheet'));
+
+/* NovaBack must walk the surface stack down to home, then stop */
+N.openPanel('core');
+await new Promise((r) => setTimeout(r, 400));
+check('NovaBack closes CORE', N.back() === true && N.state.panel === null);
+await goHome();
+N.openApp('notes', window.document.querySelector('#layer-home .app-card'));
+await new Promise((r) => setTimeout(r, 900));
+check('NovaBack closes an open app', N.back() === true);
+await new Promise((r) => setTimeout(r, 1200));
+check('…an app opened from home goes back to home', N.state.surface === 'home' && !window.document.querySelector('#layer-apps .app'), N.state.surface);
+check('…and at home the system is free to act', N.back() === false, N.state.surface);
+
+/* collapse is a separate action: drag the app down → a card on NOVA CANVAS */
+N.openApp('notes', window.document.querySelector('#layer-home .app-card'));
+await new Promise((r) => setTimeout(r, 900));
+N.ui.install.close();
+dragGest(195, 300, 195, 700, 16);      // drag the app surface downwards
+await new Promise((r) => setTimeout(r, 1400));
+check('collapse sends the app to NOVA CANVAS, not home', N.state.surface === 'canvas', N.state.surface);
+await goHome();
+
+/* native shell: the APK's JS bridge must be used when present */
+window.NovaSystem = { download: () => {} };
+check('native shell detected when the bridge exists', window.NOVA.install !== undefined);
+window.NovaSystem = undefined;
+
+/* the service worker file must match the shipped version */
+const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+const core = fs.readFileSync(path.join(ROOT, 'src/core/version.js'), 'utf8');
+const versionFile = fs.readFileSync(path.join(ROOT, '..', 'VERSION'), 'utf8').trim();
+check('sw.js version matches VERSION', sw.includes(`NOVA_VERSION = '${versionFile}'`), versionFile);
+check('version.js matches VERSION', core.includes(`NOVA_VERSION = '${versionFile}'`), versionFile);
+check('manifest is linked in index.html', fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('manifest.webmanifest'));
+check('manifest icons exist', ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png']
+  .every((f) => fs.existsSync(path.join(ROOT, 'icons', f))));
+
+await new Promise((r) => setTimeout(r, 300));
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 console.log('runtime errors:', errors.length ? errors.slice(0, 8).join('\n') : 'none');

@@ -10,7 +10,11 @@
     "check:motion": "bash tools/lint-motion.sh",
     "check:springs": "node tools/spring-check.mjs",
     "check:experience": "node tools/experience-check.mjs",
-    "check": "npm run check:motion && npm run check:classes && npm run check:springs && npm run check:experience"
+    "check": "npm run check:motion && npm run check:classes && npm run check:springs && npm run check:experience",
+    "apk": "bash tools/stage-assets.sh && cd android && gradle assembleDebug",
+    "apk:assets": "bash tools/stage-assets.sh",
+    "icons": "bash tools/make-icons.sh",
+    "version:bump": "node tools/bump-version.mjs"
   },
   "devDependencies": {
     "jsdom": "^25.0.1"

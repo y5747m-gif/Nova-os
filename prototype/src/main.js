@@ -17,6 +17,10 @@ import {
   onConfigChange, token, springConfig, currentOvershoot, blurPx,
 } from './motion/config.js';
 import { initAudio, playSound } from './core/sound.js';
+import { NOVA_VERSION } from './core/version.js';
+import {
+  createInstaller, registerServiceWorker, checkForUpdate, applyUpdate, isStandalone,
+} from './core/install.js';
 import { haptic, hapticBudgetLeft } from './core/haptics.js';
 import { stats } from './motion/ticker.js';
 
@@ -113,6 +117,12 @@ const ui = {
     },
   }),
 };
+
+ui.install = createInstaller({
+  layer: L.overlay,
+  toast,
+  emit: (k) => NovaMotion.emit(k),
+});
 
 ui.core = mountCore(L.panels, {
   onOpenApp: (appId, el) => openApp(appId, el),
@@ -806,6 +816,27 @@ const deckActions = [
   ['sweep', 'إغلاق جماعي'],
 ];
 
+function buildInstallDeck() {
+  const host = document.getElementById('deck-install');
+  if (!host) return;
+  host.replaceChildren(
+    h('button', {
+      class: 'chip chip--cta',
+      onclick: () => { ui.install.isOpen ? ui.install.close() : ui.install.open(); },
+    }, 'تحميل على الهاتف'),
+    h('button', {
+      class: 'chip',
+      onclick: () => ui.install.open(),
+    }, 'APK / PWA'),
+  );
+  const note = document.getElementById('install-note');
+  if (note) {
+    note.innerHTML = isStandalone()
+      ? `شغّال كتطبيق مثبّت · <code>v${NOVA_VERSION}</code>`
+      : `افتح «تحميل على الهاتف» للتثبيت كتطبيق أو تنزيل الـAPK · <code>v${NOVA_VERSION}</code>`;
+  }
+}
+
 function buildDeck() {
   const chipRow = (id, entries, key, onPick) => {
     const row = document.getElementById(id);
@@ -823,6 +854,8 @@ function buildDeck() {
   document.getElementById('deck-actions').replaceChildren(...deckActions.map(([id, label]) => h('button', {
     class: 'chip', dataset: { action: id }, onclick: () => runAction(id),
   }, label)));
+
+  buildInstallDeck();
 }
 
 function refreshDeck() {
@@ -921,6 +954,7 @@ function runAction(id) {
       paintCaption();
       break;
     case 'sweep': showCanvas(); setTimeout(() => ui.canvas.sweep(), 320); break;
+    case 'install': ui.install.isOpen ? ui.install.close() : ui.install.open(); break;
     default: break;
   }
 }
@@ -928,14 +962,10 @@ function runAction(id) {
 /* ── keyboard shortcuts (desktop) ──────────────────────────────── */
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
-  const map = { k: 'core', f: 'flow', c: 'canvas', e: 'event', m: 'media', p: 'power', l: 'lock', s: 'sweep', r: 'resume' };
+  const map = { k: 'core', f: 'flow', c: 'canvas', e: 'event', m: 'media', p: 'power', l: 'lock', s: 'sweep', r: 'resume', i: 'install' };
   const action = map[e.key.toLowerCase()];
   if (action) { e.preventDefault(); runAction(action); }
-  if (e.key === 'Escape') {
-    if (state.panel) closePanel();
-    else if (state.surface === 'app') collapseToCanvas();
-    else if (state.surface === 'canvas') hideCanvas();
-  }
+  if (e.key === 'Escape') NovaBack();
 });
 
 /* ── boot ──────────────────────────────────────────────────────── */
@@ -952,6 +982,84 @@ paintCaption();
 pushEvent(makeEvent({ who: 'محمد', body: 'عايز يكلمك', actions: ['رد', 'اتصال'] }));
 pushEvent(makeEvent({ who: 'التقويم', body: 'اجتماع الفريق بعد 25 دقيقة', actions: ['تأجيل', 'افتح'] }));
 
-toast('NOVA OS — بروتوتايب المرحلة 1', 3200);
+/* ══════════════════════════════════════════════════════════════
+   Shell detection — the APK (or an installed web app) hides the
+   desktop scaffolding: the WebView *is* the device (styles/shell-android.css).
+   `?shell=app` previews that layout in any browser.
+   ══════════════════════════════════════════════════════════════ */
+const params = new URLSearchParams(location.search);
+const shellParam = params.get('shell');
+const isShellApp = shellParam === 'app'
+  || /NovaOS/i.test(navigator.userAgent)
+  || (shellParam !== 'web' && isStandalone());
+document.body.dataset.shell = isShellApp ? 'app' : 'web';
+document.body.dataset.version = NOVA_VERSION;
 
-window.NOVA = { state, ui, openApp, openPanel, closePanel, showCanvas, runAction, toast, NovaMotion };
+/* deep links from the manifest shortcuts: ?action=core|canvas */
+const deepLink = params.get('action');
+if (deepLink) {
+  setTimeout(() => {
+    if (state.surface === 'lock') {
+      state.surface = 'home';
+      ui.lock.setVisible(false);
+      ui.home.setHidden(false);
+      ui.home.enter();
+    }
+    runAction(deepLink);
+  }, 240);
+}
+
+/* installable web app: real service worker + update flow */
+registerServiceWorker().then((reg) => {
+  if (reg) document.body.dataset.sw = 'ready';
+});
+
+window.addEventListener('nova:update-ready', () => {
+  toast('تحديث NOVA جاهز — اضغط U للتطبيق أو أعد الفتح', 4200);
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'u' && !e.metaKey && !e.ctrlKey && e.target.tagName !== 'INPUT') applyUpdate();
+});
+
+toast(isShellApp ? `NOVA OS v${NOVA_VERSION}` : `NOVA OS v${NOVA_VERSION} — بروتوتايب المرحلة 1`, 3200);
+
+/* ══════════════════════════════════════════════════════════════
+   NovaBack — one navigation answer, used by three shells:
+     · the APK's hardware/gesture back button (MainActivity.kt)
+     · the Android browser's back in an installed web app (popstate)
+     · the desktop Esc key
+   Returns true when NOVA consumed the step.
+   ══════════════════════════════════════════════════════════════ */
+function NovaBack() {
+  if (ui.install?.isOpen) { ui.install.close(); return true; }
+  const power = document.querySelector('.power');
+  if (power) { power.remove(); NovaMotion.emit('close'); return true; }
+  if (state.panel) { closePanel(); return true; }
+  if (state.surface === 'split') { closeSplit(); return true; }
+  // Back = the surface you came from (docs/01 §5). Collapsing an app into a
+  // memory card on NOVA CANVAS is the drag-down gesture, not Back.
+  if (state.surface === 'app') { finishApp(returnTo === 'canvas' ? 'canvas' : 'home'); return true; }
+  if (state.surface === 'canvas') { hideCanvas(); return true; }
+  return false;
+}
+
+/* an installed web app must answer the system back gesture too */
+if (isShellApp) {
+  history.pushState({ nova: true }, '');
+  window.addEventListener('popstate', () => {
+    if (NovaBack()) history.pushState({ nova: true }, '');
+  });
+}
+
+/* the APK downloads and installs the update itself; the browser just downloads */
+window.NovaOnInstall = (state) => {
+  if (state === 'ready') toast('نزّلنا الملف — اكمل التثبيت من نافذة النظام', 3600);
+  else toast('افتح لينك التحميل من المتصفح لإكمال التثبيت', 3600);
+};
+
+window.NovaBack = NovaBack;
+window.NOVA = {
+  state, ui, openApp, openPanel, closePanel, showCanvas, runAction, toast, NovaMotion,
+  version: NOVA_VERSION, install: ui.install, checkForUpdate, applyUpdate, isStandalone,
+  back: NovaBack,
+};

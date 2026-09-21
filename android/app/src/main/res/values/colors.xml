@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- NOVA Dark, docs/05-design-tokens.md §1 -->
+    <color name="nova_bg">#07080B</color>
+    <color name="nova_surface">#101218</color>
+    <color name="nova_accent">#6C5CE7</color>
+</resources>

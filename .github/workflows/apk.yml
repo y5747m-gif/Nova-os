@@ -1,0 +1,135 @@
+name: Build NOVA OS APK
+
+# Produces an installable Android APK and publishes it as a GitHub Release
+# asset, which is exactly what the "تحميل APK" button inside NOVA looks for
+# (docs/06-install.md). No secrets required.
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'      # work-in-progress builds are published as pre-releases
+    paths:
+      - 'prototype/**'
+      - 'android/**'
+      - 'tools/**'
+      - 'VERSION'
+      - '.github/workflows/apk.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish the APK as a GitHub Release asset'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nova-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build + publish APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install tooling
+        run: npm ci
+
+      # the motion contract is enforced before anything is shipped
+      - name: Quality gates
+        run: npm run check
+
+      - name: Stage the web experience into the APK assets
+        run: bash tools/stage-assets.sh
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build the APK
+        working-directory: android
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Name the artifact
+        id: artifact
+        run: |
+          VERSION="$(cat VERSION)"
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          OUT="dist/nova-os-v${VERSION}.apk"
+          mkdir -p dist
+          cp "$APK" "$OUT"
+          cp "$APK" dist/nova-os-latest.apk
+          sha256sum "$OUT" | tee dist/SHA256SUMS.txt
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          ls -lh dist
+
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-os-apk-v${{ steps.artifact.outputs.version }}
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Work out how to label the release
+        if: github.event_name == 'push' || inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "title=NOVA OS — APK (latest)" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "title=NOVA OS — APK (${GITHUB_REF_NAME}, pre-release)" >> "$GITHUB_OUTPUT"
+          fi
+        id: rel
+        shell: bash
+
+      - name: Attach the APK to the release
+        if: github.event_name == 'push' || inputs.publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: ${{ steps.rel.outputs.title }}
+          prerelease: ${{ steps.rel.outputs.prerelease }}
+          body: |
+            ## NOVA OS ${{ steps.artifact.outputs.version }}
+
+            البناء من فرع `${{ github.ref_name }}` · commit `${{ github.sha }}`
+            Built by [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+
+            قابل للتثبيت على أندرويد 8+ · Installable on Android 8+
+
+            - **`nova-os-latest.apk`** — النسخة الحالية (نفس الملف اللي زر «تحميل APK» بيدوّر عليه)
+            - `nova-os-v${{ steps.artifact.outputs.version }}.apk` — نسخة مُرقّمة للرجوع ليها
+            - `SHA256SUMS.txt` — للتأكد من سلامة الملف
+
+            **التثبيت:** افتح الملف على الهاتف ← تثبيت ← اسمح بـ«تثبيت تطبيقات من مصادر غير معروفة».
+            بعد كده تقدر تخليه المشغّل الافتراضي (Settings ← Apps ← Default apps ← Home app ← NOVA OS).
+
+            البناء: `gradle assembleDebug` من الكود الموجود في `android/` — بدون أي مفاتيح أو خدمات خارجية.
+          files: |
+            dist/nova-os-latest.apk
+            dist/nova-os-v${{ steps.artifact.outputs.version }}.apk
+            dist/SHA256SUMS.txt
+          make_latest: true
+          fail_on_unmatched_files: false

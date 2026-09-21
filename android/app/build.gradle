@@ -1,0 +1,87 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+/* Version comes from the single source of truth at the repo root (/VERSION),
+   the same file the web layer and the service worker are bumped from. */
+def novaVersion = new File(rootProject.projectDir.parentFile, 'VERSION').text.trim()
+
+/* Optional release key: create android/keystore.properties + a .jks to sign
+   your own builds (see docs/06-install.md §6). Without it, debug signing. */
+def keystorePropsFile = rootProject.file('keystore.properties')
+def hasReleaseKey = keystorePropsFile.exists()
+
+android {
+    namespace 'os.nova.launcher'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'os.nova.launcher'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName novaVersion
+        resourceConfigurations += ['ar', 'en']
+        vectorDrawables.useSupportLibrary = false
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                def props = new Properties()
+                keystorePropsFile.withInputStream { props.load(it) }
+                storeFile rootProject.file(props['storeFile'])
+                storePassword props['storePassword']
+                keyAlias props['keyAlias']
+                keyPassword props['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            applicationIdSuffix ''
+        }
+        release {
+            minifyEnabled hasReleaseKey
+            shrinkResources hasReleaseKey
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    /* The web experience is shipped inside the APK: keep it uncompressed and
+       memory-mappable so the WebView can stream it straight from the APK. */
+    androidResources {
+        noCompress += ['html', 'css', 'js', 'json', 'webmanifest', 'png', 'svg']
+    }
+
+    packaging {
+        resources.excludes += ['META-INF/*.version', 'META-INF/LICENSE*', 'DebugProbesKt.bin']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.activity:activity-ktx:1.9.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+}

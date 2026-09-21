@@ -214,6 +214,13 @@ body[data-mode="light"] .deck {
 }
 body[data-mode="light"] .chip { background: rgba(17, 19, 24, .04); border-color: rgba(17, 19, 24, .08); }
 .chip:hover { transform: translateY(-1px); }
+.chip--cta {
+  background: linear-gradient(140deg, var(--nv-accent), color-mix(in srgb, var(--nv-accent-2) 70%, var(--nv-accent)));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--nv-accent) 35%, transparent);
+}
 .chip[aria-pressed="true"] {
   background: linear-gradient(140deg, var(--nv-accent), color-mix(in srgb, var(--nv-accent-2) 70%, var(--nv-accent)));
   border-color: transparent;
