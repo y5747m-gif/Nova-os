@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- the WebView keeps NOVA's workspace + settings in its own storage -->
+    <include domain="root" path="app_webview/" />
+    <exclude domain="root" path="app_webview/Default/Local Storage/leveldb/LOG" />
+</full-backup-content>

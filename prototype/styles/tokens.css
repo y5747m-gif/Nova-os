@@ -1,0 +1,90 @@
+/* ══════════════════════════════════════════════════════════════
+   NOVA OS — design tokens (see docs/05-design-tokens.md)
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* motion tokens (fallback time values; physics does the work) */
+  --nv-fast: 160ms;
+  --nv-normal: 320ms;
+  --nv-slow: 480ms;
+  --nv-long: 650ms;
+
+  /* geometry */
+  --nv-r-chip: 10px;
+  --nv-r-card: 22px;
+  --nv-r-window: 28px;
+  --nv-r-panel: 32px;
+
+  /* accent pack (overridden by JS) */
+  --nv-accent: #6c5ce7;
+  --nv-accent-2: #22d3ee;
+  --nv-bloom: #ff6b9a;
+  --nv-mint: #34d399;
+  --nv-amber: #f5a524;
+  --nv-coral: #ff5c5c;
+  --nv-ice: #7dd3fc;
+
+  --nv-ease: cubic-bezier(.22, 1, .36, 1);
+  color-scheme: dark;
+}
+
+/* ── NOVA Dark ─────────────────────────────────────────────── */
+body[data-mode="dark"] {
+  --nv-bg: #07080b;
+  --nv-bg-2: #0b0d13;
+  --nv-surface: #101218;
+  --nv-elevated: #171a22;
+  --nv-line: rgba(244, 246, 250, .08);
+  --nv-line-strong: rgba(244, 246, 250, .16);
+  --nv-text: #f4f6fa;
+  --nv-text-2: #8c93a1;
+  --nv-text-3: #5a6070;
+  --nv-scrim: rgba(4, 5, 8, .55);
+  --nv-shadow-card: 0 4px 18px rgba(0, 0, 0, .35);
+  --nv-shadow-window: 0 18px 50px rgba(0, 0, 0, .45);
+  --nv-shadow-panel: 0 24px 70px rgba(0, 0, 0, .55);
+  --nv-glass: rgba(23, 26, 34, .72);
+  color-scheme: dark;
+}
+
+/* ── NOVA Paper (light) ────────────────────────────────────── */
+body[data-mode="light"] {
+  --nv-bg: #f5f6f8;
+  --nv-bg-2: #eceef2;
+  --nv-surface: #ffffff;
+  --nv-elevated: #ffffff;
+  --nv-line: rgba(17, 19, 24, .09);
+  --nv-line-strong: rgba(17, 19, 24, .18);
+  --nv-text: #111318;
+  --nv-text-2: #5b6273;
+  --nv-text-3: #8b93a4;
+  --nv-scrim: rgba(17, 19, 24, .35);
+  --nv-shadow-card: 0 2px 10px rgba(17, 19, 24, .08);
+  --nv-shadow-window: 0 12px 34px rgba(17, 19, 24, .14);
+  --nv-shadow-panel: 0 18px 44px rgba(17, 19, 24, .18);
+  --nv-glass: rgba(255, 255, 255, .78);
+  color-scheme: light;
+}
+
+/* accent packs */
+body[data-accent="violet"] { --nv-accent: #6c5ce7; --nv-accent-2: #22d3ee; }
+body[data-accent="aurora"] { --nv-accent: #4ade80; --nv-accent-2: #a78bfa; }
+body[data-accent="orbit"]  { --nv-accent: #f5a524; --nv-accent-2: #6c5ce7; }
+body[data-accent="liquid"] { --nv-accent: #22d3ee; --nv-accent-2: #ff6b9a; }
+body[data-accent="neon"]   { --nv-accent: #ff3d81; --nv-accent-2: #00e5ff; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #05060a;
+  color: #f4f6fa;
+  font-family: "IBM Plex Sans Arabic", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  overscroll-behavior: none;
+}
+
+body[data-mode="light"] { background: #e9ebf0; color: #111318; }
+
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85em; opacity: .8; }

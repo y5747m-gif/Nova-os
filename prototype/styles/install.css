@@ -1,0 +1,110 @@
+/* ══════════════════════════════════════════════════════════════
+   NOVA INSTALL sheet — "put NOVA on my phone"
+   ══════════════════════════════════════════════════════════════ */
+
+.install-scrim {
+  position: absolute; inset: 0;
+  z-index: 80;
+  background: var(--nv-scrim);
+  backdrop-filter: blur(14px);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: install-fade var(--nv-fast) var(--nv-ease) both;
+}
+@keyframes install-fade { from { opacity: 0; } }
+
+.install-sheet {
+  width: 100%;
+  max-height: 96%;
+  overflow: auto;
+  padding: 20px 18px 22px;
+  border-radius: var(--nv-r-panel) var(--nv-r-panel) 0 0;
+  background: color-mix(in srgb, var(--nv-surface) 96%, transparent);
+  border: 1px solid var(--nv-line);
+  border-bottom: 0;
+  box-shadow: var(--nv-shadow-panel);
+  color: var(--nv-text);
+  display: flex; flex-direction: column; gap: 14px;
+  will-change: transform;
+  animation: install-rise var(--nv-normal) var(--nv-ease) both;
+}
+@keyframes install-rise { from { transform: translateY(28px); opacity: .4; } }
+
+.install__head { display: flex; align-items: center; gap: 12px; }
+.install__head b { display: block; font-size: 16px; }
+.install__head small { color: var(--nv-text-2); font-size: 11.5px; }
+.install__mark {
+  width: 42px; height: 42px; flex: 0 0 auto;
+  border-radius: 14px; display: grid; place-items: center;
+  background: linear-gradient(140deg, var(--nv-accent), var(--nv-accent-2));
+  color: #fff;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--nv-accent) 45%, transparent);
+}
+.install__x {
+  margin-inline-start: auto;
+  width: 34px; height: 34px; border-radius: 11px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--nv-text) 7%, transparent);
+  color: var(--nv-text-2);
+}
+
+.install__card {
+  padding: 14px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--nv-elevated) 92%, transparent);
+  border: 1px solid var(--nv-line);
+  display: flex; flex-direction: column; gap: 11px;
+}
+.install__cardHead { display: flex; flex-direction: column; gap: 4px; }
+.install__cardHead b { font-size: 14.5px; }
+.install__cardHead small { color: var(--nv-text-2); font-size: 11.5px; line-height: 1.7; }
+.install__badge {
+  align-self: flex-start;
+  font-size: 10px; font-weight: 700; letter-spacing: .8px;
+  padding: 3px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--nv-accent) 24%, transparent);
+  color: color-mix(in srgb, var(--nv-accent) 70%, var(--nv-text));
+}
+.install__badge--now {
+  background: color-mix(in srgb, var(--nv-mint) 22%, transparent);
+  color: color-mix(in srgb, var(--nv-mint) 70%, var(--nv-text));
+}
+
+.install__acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.install__btn {
+  padding: 10px 15px;
+  border-radius: 999px;
+  font-size: 13px; font-weight: 500;
+  background: color-mix(in srgb, var(--nv-text) 7%, transparent);
+  border: 1px solid var(--nv-line);
+  color: var(--nv-text);
+  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.install__btn--primary {
+  background: linear-gradient(140deg, var(--nv-accent), color-mix(in srgb, var(--nv-accent-2) 70%, var(--nv-accent)));
+  border-color: transparent;
+  color: #fff; font-weight: 600;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--nv-accent) 35%, transparent);
+}
+.install__btn:active { transform: scale(.97); }
+
+.install__status { margin: 0; font-size: 12px; color: var(--nv-text-2); line-height: 1.8; }
+.install__status[data-tone="ok"] { color: color-mix(in srgb, var(--nv-mint) 80%, var(--nv-text)); }
+.install__status[data-tone="warn"] { color: color-mix(in srgb, var(--nv-amber) 85%, var(--nv-text)); }
+
+.install__manual { font-size: 12px; color: var(--nv-text-2); line-height: 1.9; }
+.install__manual p { margin: 0; }
+.install__steps { font-size: 12px; color: var(--nv-text-2); line-height: 1.9; }
+.install__steps ol { margin: 6px 0 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 5px; }
+.install__steps a { color: color-mix(in srgb, var(--nv-accent) 74%, var(--nv-text)); }
+.install__ok { color: color-mix(in srgb, var(--nv-mint) 78%, var(--nv-text)); margin: 0; }
+
+.install__foot {
+  border-top: 1px solid var(--nv-line);
+  padding-top: 12px;
+  font-size: 11px; color: var(--nv-text-2); line-height: 1.9;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.install__foot p { margin: 0; }
+.install__foot a { color: color-mix(in srgb, var(--nv-accent) 74%, var(--nv-text)); }
+.install__warn { color: color-mix(in srgb, var(--nv-amber) 72%, var(--nv-text-2)); }

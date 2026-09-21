@@ -1,0 +1,25 @@
+{
+  "name": "NOVA OS",
+  "short_name": "NOVA",
+  "description": "A New Way to Use Your Phone — مساحات، بطاقات، إجراءات، انتقالات.",
+  "lang": "ar",
+  "dir": "rtl",
+  "id": "/?nova=1",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#07080B",
+  "theme_color": "#07080B",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "NOVA CORE", "short_name": "CORE", "url": "./index.html?action=core" },
+    { "name": "NOVA CANVAS", "short_name": "CANVAS", "url": "./index.html?action=canvas" }
+  ]
+}

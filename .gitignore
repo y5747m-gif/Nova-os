@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.log
+
+# staged web assets are produced by tools/stage-assets.sh
+android/app/src/main/assets/www/
+# local Android build config / signing material
+android/local.properties
+android/keystore.properties
+android/*.jks
