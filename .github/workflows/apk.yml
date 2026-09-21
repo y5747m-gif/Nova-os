@@ -64,15 +64,49 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      # Optional: a stable signing key so new builds install *over* the old ones
+      # in place. Add these repository secrets to enable it (docs/06-install.md §6):
+      #   NOVA_KEYSTORE_BASE64, NOVA_STORE_PASSWORD, NOVA_KEY_ALIAS, NOVA_KEY_PASSWORD
+      - name: Restore your signing key (only if the secrets exist)
+        env:
+          NOVA_KEYSTORE_BASE64: ${{ secrets.NOVA_KEYSTORE_BASE64 }}
+          NOVA_STORE_PASSWORD: ${{ secrets.NOVA_STORE_PASSWORD }}
+          NOVA_KEY_ALIAS: ${{ secrets.NOVA_KEY_ALIAS }}
+          NOVA_KEY_PASSWORD: ${{ secrets.NOVA_KEY_PASSWORD }}
+        run: |
+          if [ -z "${NOVA_KEYSTORE_BASE64}" ]; then
+            echo "no signing key configured — the build stays debug-signed (updating in place needs an uninstall first)"
+            exit 0
+          fi
+          printf '%s' "$NOVA_KEYSTORE_BASE64" | base64 -d > android/nova-release.jks
+          cat > android/keystore.properties <<EOF
+          storeFile=../nova-release.jks
+          storePassword=${NOVA_STORE_PASSWORD}
+          keyAlias=${NOVA_KEY_ALIAS}
+          keyPassword=${NOVA_KEY_PASSWORD}
+          EOF
+          echo "signing key restored: builds will sign with the same certificate every run"
+
       - name: Build the APK
         working-directory: android
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: |
+          if [ -f keystore.properties ]; then
+            gradle --no-daemon --stacktrace assembleRelease
+          else
+            gradle --no-daemon --stacktrace assembleDebug
+          fi
 
       - name: Name the artifact
         id: artifact
         run: |
           VERSION="$(cat VERSION)"
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            APK="android/app/build/outputs/apk/release/app-release.apk"
+            echo "signed release build"
+          else
+            APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            echo "debug build (no signing key configured)"
+          fi
           OUT="dist/nova-os-v${VERSION}.apk"
           mkdir -p dist
           cp "$APK" "$OUT"
@@ -145,6 +179,14 @@ jobs:
             echo
             echo "**التثبيت:** افتح الملف على الهاتف ← تثبيت ← اسمح بـ«تثبيت تطبيقات من مصادر غير معروفة»."
             echo "بعد كده تقدر تخليه المشغّل الافتراضي: Settings ← Apps ← Default apps ← Home app ← NOVA OS."
+            echo
+            if [ -f android/keystore.properties ]; then
+              echo "> موقّع بمفتاحك الثابت: التحديثات بتنزل فوق النسخة القديمة من غير مسح."
+            else
+              echo "> النسخة دي موقّعة بمفتاح تجريبي مؤقت. لو جيت تحدّث لنسخة أحدث وظهر «تعارض في التطبيق»،"
+              echo "> امسح NOVA الأول وثبّت الجديدة — أو ضيف مفاتيح التوقيع (docs/06-install.md §6) مرة واحدة"
+              echo "> وبعدها كل التحديثات تنزل فوق بعضها عادي."
+            fi
             echo
             echo "**التحقق من الملف · verification**"
             echo

@@ -142,6 +142,37 @@ safe-area padding driven by `--nv-inset-*` / `env(safe-area-inset-*)`.
 
 ## 6. Signing your own release build (optional)
 
+### Why you want this
+
+CI builds without a keystore are **debug-signed**, and a debug keystore is generated fresh on every
+runner — so two builds from two runs carry *different* certificates. Android refuses to install a
+package over one signed by a different key: you get “App not installed / conflict” and have to
+uninstall first. Give the workflow one stable key and updates install **in place**, forever.
+
+### Turn it on in CI (one time)
+
+```bash
+keytool -genkeypair -v -keystore nova-release.jks -alias nova -keyalg RSA \
+        -keysize 4096 -validity 9125 -storetype JKS
+base64 -w0 nova-release.jks > nova-release.jks.b64     # or: base64 -i … on macOS
+```
+
+Then in the repository: **Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | Value |
+| --- | --- |
+| `NOVA_KEYSTORE_BASE64` | contents of `nova-release.jks.b64` |
+| `NOVA_STORE_PASSWORD` | the keystore password |
+| `NOVA_KEY_ALIAS` | `nova` |
+| `NOVA_KEY_PASSWORD` | the key password |
+
+From the next run the workflow builds `assembleRelease` (R8 + resource shrinking, rules keep the JS
+bridge), signs with your key, and says so in the release notes. Delete the keystore and password
+files from the repository working tree — `.gitignore` keeps `*.jks` and `android/keystore.properties`
+out of Git, and secrets never appear in logs.
+
+### Or sign locally
+
 ```bash
 keytool -genkeypair -v -keystore nova-release.jks -alias nova -keyalg RSA \
         -keysize 4096 -validity 9125 -storetype JKS
