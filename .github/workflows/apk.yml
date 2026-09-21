@@ -100,7 +100,11 @@ jobs:
             echo "permissions:"
             grep -E "^uses-permission:" /tmp/badging.txt || true
             echo "assets/www files: $(unzip -l "$APK" | grep -c 'assets/www')"
-            echo "signature: $(grep -m1 'Signer #1 certificate DN' /tmp/certs.txt || echo 'n/a')"
+            SIG="$(grep -m1 'Signer #1 certificate DN' /tmp/certs.txt || true)"
+            if [ -z "$SIG" ]; then
+              SIG="$(unzip -l "$APK" | grep -oE 'META-INF/[A-Za-z0-9_.]+\.(RSA|SF|MF)' | tr '\n' ' ')"
+            fi
+            echo "signature: ${SIG:-n/a}"
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
             echo "size: $(stat -c%s "$APK") bytes"
             echo '```'

@@ -994,6 +994,12 @@ const isShellApp = shellParam === 'app'
   || (shellParam !== 'web' && isStandalone());
 document.body.dataset.shell = isShellApp ? 'app' : 'web';
 document.body.dataset.version = NOVA_VERSION;
+// who is running us? the Android shell reports its own insets; an installed
+// iOS web app has to ask the OS through env(safe-area-inset-*) instead
+document.body.dataset.platform =
+  /Android/i.test(navigator.userAgent) ? 'android'
+    : /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'ios'
+      : 'other';
 
 /* deep links from the manifest shortcuts: ?action=core|canvas */
 const deepLink = params.get('action');

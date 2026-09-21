@@ -45,6 +45,12 @@ native things a browser can't do:
 
 ### 2.1 Build it without a computer (GitHub Actions — recommended)
 
+> **Already built once:** the workflow has run on this repository and published
+> `nova-os-latest.apk` (verified: `os.nova.launcher`, versionName 0.1.0, minSdk 26/target 34,
+> launchable `MainActivity`, 38 `assets/www` files inside, SHA-256 in the release notes).
+> Open **Releases → NOVA OS — APK (latest)** on your phone and install it, or just tap
+> **تحميل APK** inside NOVA — it resolves the same asset.
+
 The repository ships a workflow: `.github/workflows/apk.yml`.
 
 1. Push the repo to GitHub (already done if you're reading this in the repo).
@@ -68,7 +74,7 @@ Requirements: **JDK 17** and an Android SDK with **API 34 platform + build-tools
 (The Android SDK is not part of this repo; Android Studio installs it for you.)
 
 ```bash
-# 1. stage the web experience into the app's assets
+# 1. stage the web experience into the app's assets (also: npm run apk:assets)
 bash tools/stage-assets.sh
 
 # 2. build
@@ -108,6 +114,12 @@ The deck has **Install on your phone** → *تحميل على الهاتف*. The
 
 The update check runs in the background too: `NovaUpdateWorker` polls every 12h and posts **one**
 notification per new tag (`NovaPrefs.seenUpdate` prevents nagging).
+
+## 3.1 Preview the phone layout in a desktop browser
+
+Append `?shell=app` to the URL (or `?shell=web` to force the deck back). That is the exact
+full-screen layout the APK and an installed web app use: no device frame, no control deck,
+safe-area padding driven by `--nv-inset-*` / `env(safe-area-inset-*)`.
 
 ## 4. Offline & caching
 

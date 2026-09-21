@@ -11,6 +11,13 @@ body[data-shell="app"] {
   height: 100%;
   position: fixed;
   inset: 0;
+  /* the Android shell injects --nv-inset-*; iOS answers through env() */
+  --nv-safe-top: 0px;
+  --nv-safe-bottom: 0px;
+}
+body[data-shell="app"][data-platform="ios"] {
+  --nv-safe-top: env(safe-area-inset-top, 0px);
+  --nv-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* the desktop scaffolding disappears */
@@ -46,29 +53,29 @@ body[data-shell="app"] .screen {
 
 /* ── real system bars: every surface respects the safe area ───── */
 body[data-shell="app"] .status {
-  height: calc(54px + var(--nv-inset-top, 0px));
-  padding-top: calc(16px + var(--nv-inset-top, 0px));
+  height: calc(54px + var(--nv-inset-top, 0px) + var(--nv-safe-top));
+  padding-top: calc(16px + var(--nv-inset-top, 0px) + var(--nv-safe-top));
 }
 body[data-shell="app"] .home {
-  padding-top: calc(66px + var(--nv-inset-top, 0px));
-  padding-bottom: calc(24px + var(--nv-inset-bottom, 0px));
+  padding-top: calc(66px + var(--nv-inset-top, 0px) + var(--nv-safe-top));
+  padding-bottom: calc(24px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom));
 }
 body[data-shell="app"] .app__chrome {
-  padding-top: calc(58px + var(--nv-inset-top, 0px));
+  padding-top: calc(58px + var(--nv-inset-top, 0px) + var(--nv-safe-top));
 }
-body[data-shell="app"] .canvas__bar { top: calc(54px + var(--nv-inset-top, 0px)); }
-body[data-shell="app"] .canvas__foot { bottom: calc(20px + var(--nv-inset-bottom, 0px)); }
-body[data-shell="app"] .flow { padding-top: calc(18px + var(--nv-inset-top, 0px)); }
-body[data-shell="app"] .core { padding-bottom: calc(22px + var(--nv-inset-bottom, 0px)); }
+body[data-shell="app"] .canvas__bar { top: calc(54px + var(--nv-inset-top, 0px) + var(--nv-safe-top)); }
+body[data-shell="app"] .canvas__foot { bottom: calc(20px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
+body[data-shell="app"] .flow { padding-top: calc(18px + var(--nv-inset-top, 0px) + var(--nv-safe-top)); }
+body[data-shell="app"] .core { padding-bottom: calc(22px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
 body[data-shell="app"] .panel--core { max-height: 94%; }
 body[data-shell="app"] .panel--flow { max-height: 88%; }
-body[data-shell="app"] .toast { bottom: calc(92px + var(--nv-inset-bottom, 0px)); }
-body[data-shell="app"] .drop-tray { bottom: calc(12px + var(--nv-inset-bottom, 0px)); }
-body[data-shell="app"] .orb-card { bottom: calc(26px + var(--nv-inset-bottom, 0px)); }
-body[data-shell="app"] .control__foot { bottom: calc(36px + var(--nv-inset-bottom, 0px)); }
-body[data-shell="app"] .edge-hint--bottom { bottom: calc(6px + var(--nv-inset-bottom, 0px)); }
-body[data-shell="app"] .edge-hint--top { top: calc(56px + var(--nv-inset-top, 0px)); }
-body[data-shell="app"] .install-sheet { padding-bottom: calc(22px + var(--nv-inset-bottom, 0px)); }
+body[data-shell="app"] .toast { bottom: calc(92px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
+body[data-shell="app"] .drop-tray { bottom: calc(12px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
+body[data-shell="app"] .orb-card { bottom: calc(26px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
+body[data-shell="app"] .control__foot { bottom: calc(36px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
+body[data-shell="app"] .edge-hint--bottom { bottom: calc(6px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
+body[data-shell="app"] .edge-hint--top { top: calc(56px + var(--nv-inset-top, 0px) + var(--nv-safe-top)); }
+body[data-shell="app"] .install-sheet { padding-bottom: calc(22px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
 
 /* gesture hints are for the deck demo, not for a real phone */
 body[data-shell="app"] .edge-hint { display: none; }
