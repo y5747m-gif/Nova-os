@@ -58,6 +58,42 @@ function readEntries(buf) {
 const entries = readEntries(buf);
 const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
 
+/**
+ * Signatures. AGP does not write META-INF/*.RSA when minSdk >= 24 — those APKs are
+ * signed with the APK Signature Scheme v2/v3, whose block sits between the last entry
+ * and the central directory. Both shapes are recognised here.
+ */
+const SIGNING_MAGIC = Buffer.from('APK Sig Block 42', 'ascii');
+const SCHEMES = new Map([
+  [0x7109871a, 'v2 (APK Signature Scheme v2)'],
+  [0xf05368c0, 'v3 (APK Signature Scheme v3)'],
+  [0x1b93ad61, 'v3.1'],
+  [0x42726577, 'source stamp'],
+]);
+
+function readSigningSchemes(buf) {
+  const eocdOffset = buf.length - 22 - (buf.readUInt16LE(buf.length - 2) || 0);
+  const cdOffset = buf.readUInt32LE(eocdOffset + 16);
+  if (cdOffset < 32) return [];
+  if (!buf.subarray(cdOffset - 16, cdOffset).equals(SIGNING_MAGIC)) return [];
+  const size = Number(buf.readBigUInt64LE(cdOffset - 24));
+  const start = cdOffset - size - 8;
+  const schemes = [];
+  let cursor = start + 8;
+  const end = cdOffset - 24;
+  while (cursor + 12 <= end) {
+    const len = Number(buf.readBigUInt64LE(cursor));
+    const id = buf.readUInt32LE(cursor + 8);
+    const label = SCHEMES.get(id);
+    if (label) schemes.push(label);
+    if (len < 4) break;
+    cursor += 8 + len;
+  }
+  return schemes;
+}
+
+const signingSchemes = readSigningSchemes(buf);
+
 const byPrefix = (p) => entries.filter((e) => e.name.startsWith(p));
 const bytesOf = (list) => list.reduce((sum, e) => sum + e.uncompressed, 0);
 
@@ -132,6 +168,7 @@ const report = {
   targetSdk: pick(/^targetSdkVersion:/).replace(/^targetSdkVersion:\s*/, '') || null,
   permissions,
   signatureFiles: signatures.map((e) => e.name),
+  signingSchemes,
   certificate: certLine,
   dex: dexFiles.length,
   nativeLibs: libs.length,
@@ -166,7 +203,11 @@ if (jsonOut) {
   console.log('permissions:');
   for (const p of report.permissions) console.log(`  - ${p}`);
   console.log('signature:');
-  for (const s of report.signatureFiles) console.log(`  - ${s}`);
+  if (report.signatureFiles.length === 0 && report.signingSchemes.length === 0) {
+    console.log('  - none detected');
+  }
+  for (const s of report.signatureFiles) console.log(`  - ${s} (v1/JAR signing)`);
+  for (const s of report.signingSchemes) console.log(`  - APK Signing Block: ${s}`);
   if (report.certificate) console.log(`  - ${report.certificate}`);
   console.log('web app inside the APK:');
   console.log(`  - assets/www files: ${report.webApp.files} (${mb(report.webApp.bytes)})`);
@@ -182,9 +223,17 @@ if (!report.manifestPresent) fatal.push('AndroidManifest.xml is missing');
 if (!report.resourcesTable) fatal.push('resources.arsc is missing');
 if (report.dex === 0) fatal.push('no classes.dex — nothing would run');
 if (report.webApp.files < 10) fatal.push(`only ${report.webApp.files} web files inside — the experience would be broken`);
-if (report.signatureFiles.length === 0) fatal.push('APK is not signed — Android will refuse to install it');
+if (report.signatureFiles.length === 0 && report.signingSchemes.length === 0) {
+  fatal.push('APK is not signed — Android will refuse to install it');
+}
 
 if (fatal.length) {
+  console.log('');
+  console.log('⚠️ **verification findings**');
+  console.log('');
+  for (const f of fatal) console.log(`- ${f}`);
+  console.log('');
+  console.log(`diagnostics: entries=${entries.length} signed=${report.signatureFiles.length + report.signingSchemes.length} dex=${report.dex} web=${report.webApp.files}`);
   console.error(`\n✗ APK verification failed: ${fatal.join('; ')}`);
   process.exit(1);
 }

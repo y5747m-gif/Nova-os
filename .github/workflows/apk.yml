@@ -117,10 +117,32 @@ jobs:
           ls -lh dist
 
       - name: Verify the APK (what is really inside)
+        id: verify
         run: |
-          node tools/inspect-apk.mjs dist/nova-os-latest.apk | tee dist/VERIFIED.md
-          echo "---" >> dist/VERIFIED.md
-          node tools/inspect-apk.mjs dist/nova-os-latest.apk --json >> dist/VERIFIED.md
+          set +e
+          node tools/inspect-apk.mjs dist/nova-os-latest.apk > dist/VERIFIED.md 2> dist/verify.errors.txt
+          CODE=$?
+          cat dist/verify.errors.txt >> dist/VERIFIED.md
+          node tools/inspect-apk.mjs dist/nova-os-latest.apk --json >> dist/VERIFIED.md 2>/dev/null
+          cat dist/VERIFIED.md
+          echo "verify_exit=$CODE"
+          exit $CODE
+
+      # keep the diagnostics readable even when the gate above fails
+      - name: Publish the verification report on failure
+        if: failure()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY="$(cat dist/VERIFIED.md 2>/dev/null || echo 'no report')
+          $(cat dist/verify.errors.txt 2>/dev/null || true)"
+          if gh release view ci-report >/dev/null 2>&1; then
+            gh release edit ci-report --notes "$BODY"
+          else
+            gh release create ci-report --target "${GITHUB_SHA}" --prerelease \
+              --title "CI verification report (diagnostics, not an install)" --notes "$BODY"
+          fi
 
       - name: Upload the build artifact
         uses: actions/upload-artifact@v4
