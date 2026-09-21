@@ -200,6 +200,19 @@ Git — `.gitignore` already excludes `android/keystore.properties` and `*.jks`.
 4. Notifications from other apps stay Android's; NOVA presents its *own* events as NOVA FLOW cards.
 5. iOS has no APK path: use the PWA (§1). A real iOS app would be a separate SwiftUI effort.
 
+## 7.1 Verify any APK yourself
+
+```bash
+node tools/inspect-apk.mjs nova-os-latest.apk          # human-readable
+node tools/inspect-apk.mjs nova-os-latest.apk --json   # machine-readable
+```
+
+It parses the APK's own ZIP directory (no external tools needed): package/version from `aapt2`
+when available, permissions, signing files, `classes*.dex`, and exactly which `assets/www` files
+and version went inside — then fails loudly if anything essential is missing. CI runs the same
+script before publishing and pastes the output into the release notes, so the notes describe the
+file you are about to install rather than the file we hoped to build.
+
 ## 8. Version bumping
 
 One command keeps the three sources of truth aligned:

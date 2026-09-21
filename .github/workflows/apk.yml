@@ -116,34 +116,11 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           ls -lh dist
 
-      - name: Verify the APK (aapt2 + apksigner)
-        id: verify
+      - name: Verify the APK (what is really inside)
         run: |
-          set -euo pipefail
-          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-          APK="dist/nova-os-latest.apk"
-
-          "$BT/aapt2" dump badging "$APK" > /tmp/badging.txt || true
-          "$BT/apksigner" verify --print-certs "$APK" > /tmp/certs.txt 2>&1 || true
-
-          {
-            echo "### ما تم التحقق منه فعليًا · verified build"
-            echo
-            echo '```'
-            grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^launchable-activity:|^application-label:" /tmp/badging.txt || true
-            echo "permissions:"
-            grep -E "^uses-permission:" /tmp/badging.txt || true
-            echo "assets/www files: $(unzip -l "$APK" | grep -c 'assets/www')"
-            SIG="$(grep -m1 'Signer #1 certificate DN' /tmp/certs.txt || true)"
-            if [ -z "$SIG" ]; then
-              SIG="$(unzip -l "$APK" | grep -oE 'META-INF/[A-Za-z0-9_.]+\.(RSA|SF|MF)' | tr '\n' ' ')"
-            fi
-            echo "signature: ${SIG:-n/a}"
-            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
-            echo "size: $(stat -c%s "$APK") bytes"
-            echo '```'
-          } > dist/VERIFIED.md
-          cat dist/VERIFIED.md
+          node tools/inspect-apk.mjs dist/nova-os-latest.apk | tee dist/VERIFIED.md
+          echo "---" >> dist/VERIFIED.md
+          node tools/inspect-apk.mjs dist/nova-os-latest.apk --json >> dist/VERIFIED.md
 
       - name: Upload the build artifact
         uses: actions/upload-artifact@v4
