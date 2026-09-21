@@ -45,11 +45,22 @@ native things a browser can't do:
 
 ### 2.1 Build it without a computer (GitHub Actions — recommended)
 
-> **Already built once:** the workflow has run on this repository and published
-> `nova-os-latest.apk` (verified: `os.nova.launcher`, versionName 0.1.0, minSdk 26/target 34,
-> launchable `MainActivity`, 38 `assets/www` files inside, SHA-256 in the release notes).
+> **Already built and verified:** the workflow has run on this repository and published
+> `nova-os-latest.apk` — 4,518,806 bytes, SHA-256
+> `fbf5807c0cc6bf970f49cc5b52927064103d9b61174c094681a1faf3f96087b0`.
+> The release notes contain a machine-generated report from
+> `node tools/inspect-apk.mjs` proving the file is installable: package `os.nova.launcher`,
+> versionName 0.1.0, minSdk 26 / target 34, launchable `MainActivity`, **signed with APK Signature
+> Scheme v2** (see the note below), and 38 `assets/www` files (version 0.1.0) carrying the web app.
 > Open **Releases → NOVA OS — APK (latest)** on your phone and install it, or just tap
 > **تحميل APK** inside NOVA — it resolves the same asset.
+
+> **About the signature:** these builds are signed with the standard Android *debug* key, so the
+> report says "v2" and nothing else. That is a real, installable signature — Android accepts it as
+> soon as you allow "install unknown apps". It is not *stable*, though: CI generates a new debug key
+> per runner, so an in-place update over a previously installed build may be refused with
+> «تعارض في التطبيق». Workarounds: uninstall the old build first, or add the four signing secrets
+> from §6 so every build carries one permanent certificate.
 
 The repository ships a workflow: `.github/workflows/apk.yml`.
 
@@ -60,7 +71,8 @@ The repository ships a workflow: `.github/workflows/apk.yml`.
    Gradle 8.9 + AGP 8.5.2 + JDK 17, and publishes:
    - `nova-os-latest.apk` — what the in-app **تحميل APK** button looks for,
    - `nova-os-v<version>.apk` — a numbered copy you can always roll back to,
-   - `SHA256SUMS.txt`.
+   - `SHA256SUMS.txt` and `VERIFIED.md` (the inspector's own report, attached next to the file it
+     describes).
 4. On the phone: open the asset link → the APK downloads → tap it → allow *Install unknown apps*
    for the browser/files app → **Install**.
 

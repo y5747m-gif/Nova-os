@@ -149,6 +149,10 @@ function findBuildTool(name) {
 const badgingTool = findBuildTool('aapt2');
 const badging = badgingTool ? run(badgingTool, ['dump', 'badging', file]) : null;
 const pick = (re) => (badging?.split('\n').find((l) => re.test(l)) || '').trim();
+const clean = (line) => {
+  const m = line.match(/(\d+)/);
+  return m ? m[1] : null;
+};
 const permissions = (badging?.split('\n').filter((l) => l.startsWith('uses-permission:')) || [])
   .map((l) => l.replace("uses-permission: name='", '').replace("'", ''));
 
@@ -164,8 +168,8 @@ const report = {
   package: pick(/^package:/).replace(/^package:\s*/, '') || null,
   label: pick(/^application-label:/).replace(/^application-label:\s*/, '').replace(/'/g, '') || null,
   launchable: pick(/^launchable-activity:/).replace(/^launchable-activity:\s*/, '') || null,
-  minSdk: pick(/^sdkVersion:/).replace(/^sdkVersion:\s*/, '') || null,
-  targetSdk: pick(/^targetSdkVersion:/).replace(/^targetSdkVersion:\s*/, '') || null,
+  minSdk: clean(pick(/(?:^|\s)(?:sdkVersion|minSdkVersion)\s*:/)),
+  targetSdk: clean(pick(/targetSdkVersion\s*:/)),
   permissions,
   signatureFiles: signatures.map((e) => e.name),
   signingSchemes,

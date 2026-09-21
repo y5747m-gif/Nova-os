@@ -334,6 +334,37 @@ await new Promise((r) => setTimeout(r, 1400));
 check('collapse sends the app to NOVA CANVAS, not home', N.state.surface === 'canvas', N.state.surface);
 await goHome();
 
+/* the download button must resolve the published asset and route it correctly */
+const releasePayload = [{
+  tag_name: 'apk-latest',
+  published_at: '2026-09-21T18:15:34Z',
+  assets: [
+    { name: 'nova-os-latest.apk', size: 4518806, browser_download_url: 'https://github.com/y5747m-gif/Nova-os/releases/download/apk-latest/nova-os-latest.apk' },
+    { name: 'SHA256SUMS.txt', size: 90, browser_download_url: 'https://example.invalid/sums' },
+  ],
+}];
+globalThis.fetch = async (url) => (String(url).includes('api.github.com')
+  ? new Response(JSON.stringify(releasePayload), { status: 200, headers: { 'content-type': 'application/json' } })
+  : realFetch(url));
+window.fetch = globalThis.fetch;
+
+N.install.open();
+await new Promise((r) => setTimeout(r, 400));
+await new Promise((r) => setTimeout(r, 400));
+const apkInfo = N.install.apk;
+check('download button finds the published APK asset', !!apkInfo && apkInfo.name === 'nova-os-latest.apk', JSON.stringify(apkInfo?.name));
+check('it reports the asset size in the sheet', (window.document.querySelector('.install__status')?.textContent || '').includes('م.ب'), window.document.querySelector('.install__status')?.textContent);
+check('asset url is the GitHub release download', String(apkInfo?.url || '').includes('/releases/download/apk-latest/'), apkInfo?.url);
+
+/* inside the APK the bridge downloads + installs it natively */
+let bridgeCall = null;
+window.NovaSystem = { download: (url, name) => { bridgeCall = { url, name }; }, version: () => '0.1.0' };
+window.document.querySelector('#install-apk').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await new Promise((r) => setTimeout(r, 120));
+check('inside the APK the bridge handles the download', bridgeCall?.name === 'nova-os-latest.apk', JSON.stringify(bridgeCall));
+window.NovaSystem = undefined;
+N.install.close();
+
 /* native shell: the APK's JS bridge must be used when present */
 window.NovaSystem = { download: () => {} };
 check('native shell detected when the bridge exists', window.NOVA.install !== undefined);
