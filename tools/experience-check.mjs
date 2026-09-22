@@ -77,6 +77,11 @@ g.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 const mmShim = (q) => ({ matches: false, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} });
 window.matchMedia = mmShim;
 g.matchMedia = mmShim;
+/* jsdom has no 2D canvas: the living wallpaper layer must degrade to a no-op
+   (in production getContext returns a real context or null — both handled). */
+try {
+  window.HTMLCanvasElement.prototype.getContext = () => null;
+} catch { /* ignore */ }
 Object.defineProperty(g, 'navigator', { value: window.navigator, configurable: true });
 g.location = window.location;
 g.history = window.history;

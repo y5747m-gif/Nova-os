@@ -90,10 +90,11 @@ jobs:
       - name: Build the APK
         working-directory: android
         run: |
+          set -o pipefail
           if [ -f keystore.properties ]; then
-            gradle --no-daemon --stacktrace assembleRelease
+            gradle --no-daemon --stacktrace assembleRelease 2>&1 | tee ../build-output.log
           else
-            gradle --no-daemon --stacktrace assembleDebug
+            gradle --no-daemon --stacktrace assembleDebug 2>&1 | tee ../build-output.log
           fi
 
       - name: Name the artifact
@@ -136,7 +137,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BODY="$(cat dist/VERIFIED.md 2>/dev/null || echo 'no report')
-          $(cat dist/verify.errors.txt 2>/dev/null || true)"
+          $(cat dist/verify.errors.txt 2>/dev/null || true)
+          ── gradle build output (tail) ──
+          $(grep -E 'e: |error:|FAILED|Execution failed|What went wrong|> ' build-output.log 2>/dev/null | tail -n 60 || echo 'no build log')
+          ── raw tail ──
+          $(tail -c 12000 build-output.log 2>/dev/null || echo 'no build log')"
           if gh release view ci-report >/dev/null 2>&1; then
             gh release edit ci-report --notes "$BODY"
           else

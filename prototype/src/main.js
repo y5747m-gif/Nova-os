@@ -8,10 +8,14 @@
 import { h, clear, fmtTime } from './core/dom.js';
 import { icon } from './core/icons.js';
 import {
-  appMeta, state, pushEvent, makeEvent, deferEvent, notify, rememberWindow, subscribe,
+  APPS, appMeta, state, pushEvent, makeEvent, deferEvent, notify, rememberWindow, subscribe,
 } from './core/store.js';
+import {
+  isNativeLauncher, launchRealApp,
+} from './core/launcher.js';
 import { attachGestures, draggable } from './motion/gestures.js';
 import NovaMotion, { rectOf, clamp } from './motion/motion.js';
+import { createFx } from './motion/fx.js';
 import {
   setProfile, setTheme, setMode, setAccent, nova, PROFILES, THEMES, ACCENTS,
   onConfigChange, token, springConfig, currentOvershoot, blurPx,
@@ -34,6 +38,7 @@ import { mountControl } from './surfaces/control.js';
 import { mountLock } from './surfaces/lock.js';
 import { buildSplit } from './surfaces/split.js';
 import { createDnd } from './surfaces/dnd.js';
+import { mountSetup } from './surfaces/setup.js';
 
 /* ── element handles ───────────────────────────────────────────── */
 const screen = document.getElementById('screen');
@@ -51,8 +56,12 @@ const statusbar = document.getElementById('statusbar');
 const toastEl = document.getElementById('toast');
 const caption = document.getElementById('gesture-caption');
 
-/* ── wallpaper blobs (Dynamic Space) ───────────────────────────── */
-L.wallpaper.append(h('i'), h('i'), h('i'));
+/* ── wallpaper blobs (Dynamic Space) + the living FX layer ─────── */
+L.wallpaper.append(h('i'), h('i'), h('i'), h('i', { class: 'blob-aurora' }));
+let fx = null;
+try {
+  fx = createFx(document.getElementById('fx'));
+} catch { fx = null; }
 
 /* ── status bar ────────────────────────────────────────────────── */
 function paintStatus() {
@@ -97,6 +106,11 @@ const ui = {
   orb: createOrb(L.overlay, {
     onPrimary: (evt) => {
       ui.orb.dismiss('handled');
+      if (evt.liveKey && isNativeLauncher()) {
+        try { window.NovaSystem.openNotification(evt.liveKey); } catch { /* ignore */ }
+        toast(`فتح ${evt.who}`);
+        return;
+      }
       openApp('whatsapp', ui.home.cardEl('whatsapp'));
       toast(`رد على ${evt.who}`);
     },
@@ -122,6 +136,17 @@ ui.install = createInstaller({
   layer: L.overlay,
   toast,
   emit: (k) => NovaMotion.emit(k),
+});
+
+/* first-run wizard (native shell only — browsers never see it) */
+ui.setup = mountSetup(L.overlay, {
+  toast,
+  emit: (k) => NovaMotion.emit(k),
+  burst: () => {
+    try {
+      fx?.burst(screen.clientWidth / 2, screen.clientHeight * 0.4, '', 60);
+    } catch { /* ignore */ }
+  },
 });
 
 ui.core = mountCore(L.panels, {
@@ -236,6 +261,11 @@ function appCtx(appId, opts) {
 
 function openApp(appId, sourceEl, opts = {}) {
   if (state.surface === 'lock') return;
+  // a real installed package inside the APK → launch it with a NOVA exit
+  if (isNativeLauncher() && !APPS[appId]) {
+    launchNativeApp(appId, sourceEl);
+    return;
+  }
   if (state.panel) closePanel(true);
   if (appCtl && appCtl.appId === appId) return;
 
@@ -261,6 +291,8 @@ function openApp(appId, sourceEl, opts = {}) {
     radiusTo: 28,
     springName: 'SOFT',
     travel: Math.hypot(to.w - from.w, to.h - from.h),
+    arc: 0.65,
+    blur: 7,
     onProgress: (p) => {
       chrome.style.opacity = String(clamp((p - 0.35) / 0.4));
       body.style.opacity = String(clamp((p - 0.5) / 0.35));
@@ -284,6 +316,33 @@ function openApp(appId, sourceEl, opts = {}) {
   state.focusedApp = appId;
   appCtl = { appId, el, host, morph };
   paintCaption();
+}
+
+/* launching a REAL app: the source tile blooms toward the viewer, a spark
+   burst marks the handoff, then Android takes over. NOVA stays home. */
+function launchNativeApp(pkg, sourceEl) {
+  if (state.panel) closePanel(true);
+  NovaMotion.emit('open');
+  try {
+    const r = sourceEl?.getBoundingClientRect?.();
+    const sr = screen.getBoundingClientRect();
+    if (r && sr) fx?.burst(r.left - sr.left + r.width / 2, r.top - sr.top + r.height / 2, '', 34);
+  } catch { /* ignore */ }
+  if (sourceEl && sourceEl.style) {
+    NovaMotion.spring({
+      from: 0, to: 1, springName: 'SNAP',
+      onUpdate: (v) => {
+        const s = 1 + Math.sin(Math.min(1, v) * Math.PI) * 0.1;
+        sourceEl.style.transform = `scale(${s.toFixed(3)})`;
+        sourceEl.style.filter = v > 0.05 && v < 0.95 ? 'brightness(1.35)' : '';
+      },
+      onDone: () => { sourceEl.style.transform = ''; sourceEl.style.filter = ''; },
+    });
+  }
+  rememberWorkspace(pkg);
+  setTimeout(() => {
+    if (!launchRealApp(pkg)) toast('تعذّر فتح التطبيق');
+  }, 120);
 }
 
 function finishApp(dir = 'home') {
@@ -412,7 +471,10 @@ function openPanel(name, fromGesture = false, velocity = 900) {
     return;
   }
   panelCtl[name].release('commit', velocity);
-  if (name === 'core') setTimeout(() => ui.core.animateOrbit('commit', 900), 40);
+  if (name === 'core') {
+    try { ui.core.refresh?.(); } catch { /* ignore */ }
+    setTimeout(() => ui.core.animateOrbit('commit', 900), 40);
+  }
   if (name === 'flow') ui.flow.render();
   NovaMotion.emit('open');
   paintCaption();
@@ -808,6 +870,7 @@ const deckActions = [
   ['flow', 'FLOW'],
   ['core', 'CORE'],
   ['control', 'CONTROL'],
+  ['widgets', 'الودجات'],
   ['resume', 'استرجاع مساحة'],
   ['power', 'زر الطاقة'],
   ['privacy', 'الخصوصية'],
@@ -914,6 +977,14 @@ function runAction(id) {
     case 'flow': openPanel('flow'); break;
     case 'core': openPanel('core'); break;
     case 'control': openPanel('control'); break;
+    case 'widgets': {
+      if (isNativeLauncher()) {
+        try { window.NovaSystem.openWidgets(); } catch { /* ignore */ }
+      } else {
+        toast('الودجات متاحة داخل تطبيق NOVA على أندرويد');
+      }
+      break;
+    }
     case 'resume': {
       const slots = [{ x: 22, y: 150 }, { x: 116, y: 382 }, { x: 30, y: 596 }];
       state.windows = state.lastWorkspace.slice(0, 3).map((appId, i) => ({ appId, x: slots[i].x, y: slots[i].y }));
@@ -1030,6 +1101,122 @@ window.addEventListener('keydown', (e) => {
 toast(isShellApp ? `NOVA OS v${NOVA_VERSION}` : `NOVA OS v${NOVA_VERSION} — بروتوتايب المرحلة 1`, 3200);
 
 /* ══════════════════════════════════════════════════════════════
+   Boot splash — NOVA introduces itself, then dissolves with physics.
+   ══════════════════════════════════════════════════════════════ */
+(function bootSplash() {
+  const boot = document.getElementById('boot');
+  if (!boot) return;
+  const hide = () => {
+    NovaMotion.spring({
+      from: 0, to: 1, springName: 'SOFT',
+      onUpdate: (v) => {
+        boot.style.opacity = String(1 - v);
+        boot.style.transform = `scale(${(1 + v * 0.08).toFixed(3)})`;
+        boot.style.filter = v > 0.02 ? `blur(${(v * 10).toFixed(1)}px)` : '';
+      },
+      onDone: () => boot.remove(),
+    });
+  };
+  // the bar fills via CSS; physics takes over for the exit
+  setTimeout(hide, 1050);
+})();
+
+/* wallpaper parallax — the living layer breathes with the pointer */
+try {
+  let px = 0; let py = 0;
+  screen.addEventListener('pointermove', (e) => {
+    if (!fx) return;
+    try {
+      const r = screen.getBoundingClientRect();
+      px = ((e.clientX - r.left) / Math.max(1, r.width) - 0.5) * 2;
+      py = ((e.clientY - r.top) / Math.max(1, r.height) - 0.5) * 2;
+      fx.setParallax(px, py);
+    } catch { /* ignore */ }
+  });
+  screen.addEventListener('pointerleave', () => { try { fx?.setParallax(0, 0); } catch { /* ignore */ } });
+} catch { /* ignore */ }
+
+/* theme changes repaint the living layer */
+onConfigChange(() => { try { fx?.refresh(); } catch { /* ignore */ } });
+
+/* ══════════════════════════════════════════════════════════════
+   Native shell hooks — the APK talks back through these.
+   ══════════════════════════════════════════════════════════════ */
+window.NovaOnNotifications = (payload) => {
+  try {
+    window.__novaLive = typeof payload === 'string' ? JSON.parse(payload) : payload;
+  } catch { window.__novaLive = []; }
+  window.dispatchEvent(new CustomEvent('nova:live'));
+  // a live event while media plays becomes an orb, never an interruption
+  if (state.mediaPlaying && !state.orb && window.__novaLive?.length && !ui.orb.active) {
+    const n = window.__novaLive[0];
+    state.orb = { event: makeEvent({ who: n.app || 'الهاتف', body: n.title || n.text || '', actions: ['فتح', 'لاحقًا'], liveKey: n.key }) };
+    notify('events');
+  }
+};
+
+window.NovaOnAppsChanged = () => {
+  window.dispatchEvent(new CustomEvent('NovaOnAppsChanged'));
+  try {
+    if (state.surface === 'home' && !appCtl) ui.home.refresh();
+  } catch { /* ignore */ }
+};
+
+window.NovaOnPermission = (granted) => {
+  if (granted) {
+    try { ui.setup?.refresh(); } catch { /* ignore */ }
+    toast('تم منح الإذن');
+  }
+};
+
+/* tapping NOVA's own icon (or Home) while it runs = go home inside NOVA */
+window.NovaGoHome = () => {
+  if (ui.setup?.isOpen || ui.install?.isOpen) return true;
+  if (state.panel) closePanel(true);
+  if (state.surface === 'split' && splitCtl) { closeSplit(); return true; }
+  if (appCtl) { finishApp('home'); return true; }
+  if (state.surface === 'canvas') { hideCanvas(); return true; }
+  if (state.surface === 'lock') return false;
+  ui.home.enter();
+  return true;
+};
+
+/* nova:// deep links: core | flow | canvas | control | app/<id> */
+window.NovaOnRoute = (route) => {
+  try {
+    if (state.surface === 'lock') {
+      state.surface = 'home';
+      ui.lock.setVisible(false);
+      ui.home.setHidden(false);
+      ui.home.enter();
+    }
+    const r = String(route || '');
+    if (r === 'core' || r === 'flow' || r === 'control') openPanel(r);
+    else if (r === 'canvas') { closePanel(true); showCanvas(); }
+    else if (r.startsWith('app/')) openApp(r.slice(4), null);
+    else if (r === 'setup') ui.setup?.open();
+  } catch { /* ignore */ }
+};
+
+/* first run in the APK: the wizard turns NOVA into the phone */
+if (isNativeLauncher()) {
+  setTimeout(() => {
+    try {
+      if (ui.setup?.shouldAutoShow()) {
+        if (state.surface === 'lock') {
+          state.surface = 'home';
+          ui.lock.setVisible(false);
+          ui.home.setHidden(false);
+          ui.home.enter();
+          paintCaption();
+        }
+        ui.setup.open();
+      }
+    } catch { /* ignore */ }
+  }, 1400);
+}
+
+/* ══════════════════════════════════════════════════════════════
    NovaBack — one navigation answer, used by three shells:
      · the APK's hardware/gesture back button (MainActivity.kt)
      · the Android browser's back in an installed web app (popstate)
@@ -1037,6 +1224,7 @@ toast(isShellApp ? `NOVA OS v${NOVA_VERSION}` : `NOVA OS v${NOVA_VERSION} — ب
    Returns true when NOVA consumed the step.
    ══════════════════════════════════════════════════════════════ */
 function NovaBack() {
+  if (ui.setup?.isOpen) { ui.setup.close(); return true; }
   if (ui.install?.isOpen) { ui.install.close(); return true; }
   const power = document.querySelector('.power');
   if (power) { power.remove(); NovaMotion.emit('close'); return true; }
@@ -1066,6 +1254,7 @@ window.NovaOnInstall = (state) => {
 window.NovaBack = NovaBack;
 window.NOVA = {
   state, ui, openApp, openPanel, closePanel, showCanvas, runAction, toast, NovaMotion,
-  version: NOVA_VERSION, install: ui.install, checkForUpdate, applyUpdate, isStandalone,
-  back: NovaBack,
+  version: NOVA_VERSION, install: ui.install, setup: ui.setup, fx,
+  checkForUpdate, applyUpdate, isStandalone,
+  back: NovaBack, goHome: window.NovaGoHome,
 };

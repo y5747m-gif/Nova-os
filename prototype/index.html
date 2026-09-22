@@ -32,7 +32,7 @@
     <div class="device" id="device">
       <div class="device-notch" aria-hidden="true"></div>
       <div class="screen" id="screen">
-        <div class="layer wallpaper" id="layer-wallpaper" aria-hidden="true"></div>
+        <div class="layer wallpaper" id="layer-wallpaper" aria-hidden="true"><canvas class="fx" id="fx"></canvas></div>
         <div class="layer" id="layer-home"></div>
         <div class="layer" id="layer-apps"></div>
         <div class="layer" id="layer-split"></div>
@@ -44,6 +44,11 @@
         <div class="edge-hint edge-hint--bottom" id="hint-bottom" aria-hidden="true"><span></span></div>
         <div class="edge-hint edge-hint--top" id="hint-top" aria-hidden="true"><span></span></div>
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="boot" id="boot" aria-hidden="true">
+          <div class="boot__logo"><span>NOVA</span></div>
+          <div class="boot__bar"><i></i></div>
+          <div class="boot__tag">طريقة جديدة لاستخدام هاتفك</div>
+        </div>
       </div>
     </div>
     <p class="device-caption" id="gesture-caption">
