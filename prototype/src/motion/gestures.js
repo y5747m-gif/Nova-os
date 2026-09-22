@@ -50,7 +50,10 @@ export function attachGestures(screen, {
       velocity: 0,
       target,
     };
-    screen.setPointerCapture?.(e.pointerId);
+    // NOTE: no pointer capture here. Capturing on every pointerdown makes the
+    // browser retarget the eventual `click` to #screen (the capturing element),
+    // so no button inside the phone would ever receive its click. We capture
+    // only once a real swipe is engaged (see move()).
     onZone?.(zone);
   }
 
@@ -82,6 +85,8 @@ export function attachGestures(screen, {
 
     if (engaged && !active.engaged) {
       active.engaged = true;
+      // a real swipe: now own the pointer so it survives leaving the screen
+      try { screen.setPointerCapture?.(active.id); } catch { /* ignore */ }
       onStart?.(snapshot(active));
     }
     if (active.engaged) {
@@ -94,7 +99,10 @@ export function attachGestures(screen, {
     if (!active || (e.pointerId !== undefined && e.pointerId !== active.id)) return;
     const a = active;
     active = null;
-    if (a.engaged) onEnd?.(snapshot(a));
+    if (a.engaged) {
+      try { if (screen.hasPointerCapture?.(a.id)) screen.releasePointerCapture?.(a.id); } catch { /* ignore */ }
+      onEnd?.(snapshot(a));
+    }
   }
 
   function snapshot(a) {
@@ -138,7 +146,8 @@ export function draggable(el, {
       id: e.pointerId, x0: e.clientX, y0: e.clientY, lx: e.clientX, ly: e.clientY,
       engaged: false, t0: performance.now(), holdTimer: null, axis,
     };
-    el.setPointerCapture?.(e.pointerId);
+    // capture only once the drag engages — otherwise taps on buttons inside
+    // a draggable (window chrome, orb actions, dnd tiles) lose their click
     if (hold > 0) st.holdTimer = setTimeout(() => { st.holdReady = true; }, hold);
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', up);
@@ -151,6 +160,7 @@ export function draggable(el, {
     const dy = e.clientY - st.y0;
     if (!st.engaged && Math.hypot(dx, dy) > engage && (!hold || st.holdReady)) {
       st.engaged = true;
+      try { el.setPointerCapture?.(st.id); } catch { /* ignore */ }
       onStart?.(e, { x: e.clientX, y: e.clientY });
     }
     if (st.engaged) {
@@ -164,6 +174,7 @@ export function draggable(el, {
     if (!st) return;
     const s = st; st = null;
     clearTimeout(s.holdTimer);
+    try { if (el.hasPointerCapture?.(s.id)) el.releasePointerCapture?.(s.id); } catch { /* ignore */ }
     el.removeEventListener('pointermove', move);
     el.removeEventListener('pointerup', up);
     el.removeEventListener('pointercancel', up);

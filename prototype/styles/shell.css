@@ -52,8 +52,13 @@
 }
 
 .layer { position: absolute; inset: 0; }
-.layer.panel-layer { pointer-events: none; }
-.layer.panel-layer > * { pointer-events: auto; }
+/* Layers stack full-screen on top of each other. An empty layer must never
+   swallow taps meant for the surface underneath it (home ← apps ← split ←
+   canvas ← panels ← overlay ← lock), so layers are transparent to the pointer
+   and only their actual content is hit-testable. */
+.layer { pointer-events: none; }
+.layer > * { pointer-events: auto; }
+.layer.wallpaper > * { pointer-events: none; }
 
 .device-caption {
   margin: 0;
