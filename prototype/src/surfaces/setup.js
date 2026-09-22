@@ -10,9 +10,10 @@ import { icon } from '../core/icons.js';
 import NovaMotion, { clamp } from '../motion/motion.js';
 import {
   launcherState, requestDefaultLauncher, openHomeSettings, openNotificationAccess,
-  openUsageSettings, askPermission, setWallpaperMode, wallpaperMode, markSetupDone,
+  openUsageSettings, askPermission, markSetupDone,
   isNativeLauncher,
 } from '../core/launcher.js';
+import { WALLPAPERS, wallpaperId, setWallpaper } from '../core/wallpaper.js';
 
 const STEPS = ['welcome', 'home', 'notif', 'smart', 'walls', 'done'];
 
@@ -143,19 +144,19 @@ export function mountSetup(layer, ctx = {}) {
     }
 
     if (step === 'walls') {
-      const cur = wallpaperMode();
+      const cur = wallpaperId();
       const opt = (id, label, sub2) => h('button', {
         class: id === cur ? 'setup__wall setup__wall--on' : 'setup__wall',
-        onclick: () => { setWallpaperMode(id); ctx.emit?.('tick'); paintStep(true); },
+        onclick: () => { setWallpaper(id); ctx.emit?.('tick'); paintStep(true); },
       }, h('b', {}, label), h('span', {}, sub2));
+      const opts = Object.entries(WALLPAPERS)
+        .filter(([, w]) => !w.native || isNativeLauncher())
+        .slice(0, 9)
+        .map(([id, w]) => opt(id, w.label, w.note));
       body.append(
         h('h2', { class: 'setup__title' }, 'خلفية المساحة'),
-        h('p', { class: 'setup__sub' }, 'اختر روح شاشتك — يمكنك تغييرها في أي وقت.'),
-        h('div', { class: 'setup__walls' },
-          opt('aurora', 'أورورا', 'سديم NOVA الحي'),
-          opt('system', 'النظام', 'خلفية هاتفك'),
-          opt('dim', 'معتمة', 'خلفية هاتفك بتعتيم'),
-        ),
+        h('p', { class: 'setup__sub' }, 'اختر روح شاشتك — كل مشاهد الخلفية متاحة، ويمكنك تغييرها في أي وقت من الإعدادات.'),
+        h('div', { class: 'setup__walls' }, ...opts),
       );
       foot.append(cta('التالي', () => go(5)));
     }

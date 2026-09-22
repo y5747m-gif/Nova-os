@@ -254,6 +254,11 @@ export function setWallpaperMode(mode) {
   try { bridge()?.setWallpaperMode?.(mode); } catch { /* ignore */ }
 }
 
+/** Hand the picker to the phone's own wallpaper chooser (native only). */
+export function pickWallpaper() {
+  try { bridge()?.pickWallpaper?.(); } catch { /* ignore */ }
+}
+
 export function nativeHaptic(kind) {
   try { bridge()?.haptic?.(kind || 'tick'); } catch { /* ignore */ }
 }

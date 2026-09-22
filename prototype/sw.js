@@ -7,7 +7,7 @@
    NOVA_VERSION must match src/core/version.js and /VERSION.
    ══════════════════════════════════════════════════════════════ */
 
-const NOVA_VERSION = '0.4.0';
+const NOVA_VERSION = '0.6.0';
 const CACHE = `nova-shell-${NOVA_VERSION}`;
 
 const SHELL = [
@@ -18,6 +18,7 @@ const SHELL = [
   './styles/shell.css',
   './styles/shell-android.css',
   './styles/surfaces.css',
+  './styles/fx.css',
   './styles/install.css',
   './src/main.js',
   './src/core/dom.js',
@@ -27,11 +28,14 @@ const SHELL = [
   './src/core/haptics.js',
   './src/core/version.js',
   './src/core/install.js',
+  './src/core/launcher.js',
+  './src/core/wallpaper.js',
   './src/motion/ticker.js',
   './src/motion/springs.js',
   './src/motion/config.js',
   './src/motion/motion.js',
   './src/motion/gestures.js',
+  './src/motion/fx.js',
   './src/surfaces/home.js',
   './src/surfaces/app.js',
   './src/surfaces/core.js',
@@ -42,6 +46,7 @@ const SHELL = [
   './src/surfaces/lock.js',
   './src/surfaces/split.js',
   './src/surfaces/dnd.js',
+  './src/surfaces/setup.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

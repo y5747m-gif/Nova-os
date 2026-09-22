@@ -84,3 +84,24 @@ export const SOUND = {
 };
 
 export function playSound(kind) { SOUND[kind]?.(); }
+
+/* ── persisted preference (الإعدادات → الصوت) ───────────────────── */
+const KEY = 'nova.sound.v1';
+
+export function soundOn() {
+  try {
+    const v = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
+    return v === null ? isSoundEnabled() : v === '1';
+  } catch { return isSoundEnabled(); }
+}
+
+export function setSoundOn(on) {
+  setSoundEnabled(!!on);
+  try { if (typeof localStorage !== 'undefined') localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* ignore */ }
+}
+
+/* restore the choice the moment the module loads */
+try {
+  const v = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
+  if (v !== null) setSoundEnabled(v === '1');
+} catch { /* ignore */ }

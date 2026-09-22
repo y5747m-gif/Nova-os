@@ -43,8 +43,8 @@ body[data-mode="light"] .wallpaper::before {
   color: var(--nv-text);
 }
 .boot__logo {
-  font-size: 44px; font-weight: 700; letter-spacing: 14px;
-  padding-inline-start: 14px;
+  font-size: 34px; font-weight: 700; letter-spacing: 10px;
+  padding-inline-start: 10px;
   background: linear-gradient(100deg, var(--nv-accent) 10%, #fff 35%, var(--nv-accent-2) 55%, var(--nv-accent) 80%);
   background-size: 220% 100%;
   -webkit-background-clip: text; background-clip: text;
@@ -354,3 +354,204 @@ body[data-wallpaper="system"] .wallpaper i,
 body[data-wallpaper="system"] .wallpaper::after { opacity: 0; }
 body[data-wallpaper="system"] .screen { background: transparent; }
 body[data-wallpaper="system"] .fx { opacity: .5; }
+
+/* ══════════════════════════════════════════════════════════════
+   WALLPAPER SCENES — كل خلفيات المساحة (الإعدادات → الخلفية)
+   Each scene is a living environment: base wash + three drifting
+   blobs tuned to its mood. «صورتي» paints the user's own photo.
+   ══════════════════════════════════════════════════════════════ */
+
+body[data-wallpaper="aurora"] {
+  --nv-wall-1: #6c5ce7;
+  --nv-wall-2: #22d3ee;
+  --nv-wall-3: #ff6b9a;
+  --nv-wall-base: radial-gradient(130% 90% at 20% 0%, #151233 0%, #07080b 62%);
+}
+body[data-wallpaper="sunset"] {
+  --nv-wall-1: #ff9a5a;
+  --nv-wall-2: #ff5c8a;
+  --nv-wall-3: #ffd166;
+  --nv-wall-base: linear-gradient(175deg, #2a1230 0%, #14081c 55%, #0b0610 100%);
+}
+body[data-wallpaper="ocean"] {
+  --nv-wall-1: #22d3ee;
+  --nv-wall-2: #2563eb;
+  --nv-wall-3: #34d399;
+  --nv-wall-base: linear-gradient(180deg, #06213a 0%, #071022 60%, #050810 100%);
+}
+body[data-wallpaper="forest"] {
+  --nv-wall-1: #4ade80;
+  --nv-wall-2: #14532d;
+  --nv-wall-3: #a3e635;
+  --nv-wall-base: linear-gradient(180deg, #0c1d12 0%, #07130c 60%, #050a07 100%);
+}
+body[data-wallpaper="desert"] {
+  --nv-wall-1: #f5a524;
+  --nv-wall-2: #b45309;
+  --nv-wall-3: #fde68a;
+  --nv-wall-base: linear-gradient(180deg, #2b1608 0%, #160c05 60%, #0a0604 100%);
+}
+body[data-wallpaper="midnight"] {
+  --nv-wall-1: #334155;
+  --nv-wall-2: #1e293b;
+  --nv-wall-3: #64748b;
+  --nv-wall-base: linear-gradient(180deg, #0a0e18 0%, #060810 55%, #04050a 100%);
+}
+body[data-wallpaper="neon"] {
+  --nv-wall-1: #ff3d81;
+  --nv-wall-2: #00e5ff;
+  --nv-wall-3: #b026ff;
+  --nv-wall-base: linear-gradient(180deg, #170426 0%, #0d0318 55%, #07030c 100%);
+}
+body[data-wallpaper="rose"] {
+  --nv-wall-1: #ff6b9a;
+  --nv-wall-2: #f9a8d4;
+  --nv-wall-3: #c084fc;
+  --nv-wall-base: linear-gradient(180deg, #3b0d24 0%, #1d0712 60%, #0c040a 100%);
+}
+body[data-wallpaper="mono"] {
+  --nv-wall-1: #9ca3af;
+  --nv-wall-2: #4b5563;
+  --nv-wall-3: #e5e7eb;
+  --nv-wall-base: linear-gradient(180deg, #14161c 0%, #0b0d13 55%, #06070b 100%);
+}
+
+/* light paper mode keeps every scene readable */
+body[data-mode="light"][data-wallpaper] {
+  --nv-wall-scrim: #eceef2;
+}
+
+/* «صورتي» — the user's own photo, with a soft living veil */
+body[data-wallpaper="custom"] .wallpaper {
+  background: var(--nv-wall-img, none) center / cover no-repeat, #0b0d13;
+}
+body[data-wallpaper="custom"] .wallpaper i { opacity: .16; }
+body[data-wallpaper="custom"] .wallpaper::after {
+  background:
+    radial-gradient(130% 100% at 50% 0%, transparent 50%, rgba(0, 0, 0, .32) 100%),
+    linear-gradient(180deg, rgba(5, 6, 10, .25), transparent 45%);
+}
+body[data-mode="light"][data-wallpaper="custom"] .wallpaper::after {
+  background: radial-gradient(130% 100% at 50% 0%, transparent 58%, rgba(17, 19, 24, .18) 100%);
+}
+
+/* scenes breathe a little slower when the system asks for calm */
+body[data-motion="reduced"] .wallpaper i { animation: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   LAUNCH RITUAL — انميشن اختيار التطبيق
+   icon → glass bubble → arc to centre → pop ✦ NOVA OS shines ✦
+   → the app blooms open from the pop point.
+   ══════════════════════════════════════════════════════════════ */
+.launch__bubble {
+  position: absolute; left: 0; top: 0; z-index: 60;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--nv-glass);
+  border: 1.5px solid var(--nv-line-strong);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 18px 46px color-mix(in srgb, var(--nv-accent) 38%, transparent),
+    0 0 0 7px color-mix(in srgb, var(--nv-accent) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .22);
+  will-change: transform;
+}
+.launch__img { width: 64%; height: 64%; border-radius: 27%; display: block; }
+.launch__ico { display: grid; place-items: center; color: var(--nv-accent); }
+.launch__ico .ico { width: 27px; height: 27px; }
+
+.launch__bubble--pop {
+  animation: launch-pop 240ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+@keyframes launch-pop {
+  0%   { transform: translate3d(var(--lx, 0), var(--ly, 0), 0) scale(1.35); opacity: 1; filter: blur(0); }
+  55%  { transform: translate3d(var(--lx, 0), var(--ly, 0), 0) scale(1.72); opacity: .9; filter: blur(0); }
+  100% { transform: translate3d(var(--lx, 0), var(--ly, 0), 0) scale(2.2); opacity: 0; filter: blur(7px); }
+}
+
+.launch__ring {
+  position: absolute; left: 50%; top: 50%; z-index: 59;
+  width: 56px; height: 56px; margin: -28px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--nv-accent) 70%, transparent);
+  pointer-events: none;
+  animation: launch-ring 560ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+@keyframes launch-ring {
+  from { transform: scale(.55); opacity: .95; }
+  to   { transform: scale(4.6); opacity: 0; }
+}
+
+/* NOVA OS — the dazzling wordmark at the pop */
+.launch__brand {
+  position: absolute; left: 50%; top: 50%; z-index: 61;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: launch-brand 1100ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.launch__word {
+  display: block;
+  font-family: "Inter", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  font-size: 34px; font-weight: 700; letter-spacing: 10px;
+  padding-inline-start: 10px;
+  background: linear-gradient(100deg,
+    var(--nv-accent) 4%, #ffffff 26%, var(--nv-accent-2) 46%,
+    #ffffff 64%, var(--nv-accent) 90%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 6px 26px color-mix(in srgb, var(--nv-accent) 60%, transparent));
+  animation: brand-shine 1000ms cubic-bezier(.4, 0, .2, 1) 40ms both;
+}
+@keyframes brand-shine {
+  from { background-position: 140% 0; }
+  to   { background-position: -140% 0; }
+}
+@keyframes launch-brand {
+  0%   { opacity: 0; transform: translate(-50%, -40%) scale(.8); filter: blur(4px); }
+  16%  { opacity: 1; transform: translate(-50%, -50%) scale(1.06); filter: blur(0); }
+  30%  { transform: translate(-50%, -50%) scale(1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(.94); filter: blur(3px); }
+}
+
+/* ✦ sparkles around the wordmark */
+.launch__star {
+  position: absolute; font-style: normal; line-height: 1;
+  color: #fff; -webkit-text-fill-color: #fff;
+  text-shadow: 0 0 12px var(--nv-accent-2), 0 0 28px var(--nv-accent);
+  animation: star-flare 720ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.launch__star--a { left: -36px; top: -24px; font-size: 17px; animation-delay: 70ms; }
+.launch__star--b { right: -32px; bottom: -18px; font-size: 13px; animation-delay: 210ms; }
+.launch__star--c { right: -14px; top: -30px; font-size: 10px; animation-delay: 330ms; }
+@keyframes star-flare {
+  0%   { opacity: 0; transform: scale(.2) rotate(0deg); }
+  38%  { opacity: 1; transform: scale(1.3) rotate(24deg); }
+  100% { opacity: 0; transform: scale(.35) rotate(55deg); }
+}
+
+/* boot splash wordmark gets the same dazzle + ✦ */
+.boot__logo { position: relative; }
+.boot__logo .launch__star--a { left: -12%; top: -8%; }
+.boot__logo .launch__star--b { right: -10%; bottom: -14%; }
+
+/* the settings wordmark shines when pressed */
+.set__brand {
+  font-family: "Inter", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  letter-spacing: 2px;
+  background: linear-gradient(100deg, var(--nv-accent) 6%, #fff 30%, var(--nv-accent-2) 52%, #fff 70%, var(--nv-accent) 92%);
+  background-size: 260% 100%;
+  background-position: 0% 0;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.set__brand--shine { animation: brand-shine 900ms cubic-bezier(.4, 0, .2, 1) both; }
+
+body[data-motion="reduced"] .launch__star,
+body[data-motion="reduced"] .launch__word,
+body[data-motion="reduced"] .launch__bubble--pop,
+body[data-motion="reduced"] .launch__ring,
+body[data-motion="reduced"] .launch__brand,
+body[data-motion="reduced"] .set__brand--shine { animation: none; }
+body[data-motion="reduced"] .launch__brand { opacity: 1; }

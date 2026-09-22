@@ -27,7 +27,7 @@ const ORBIT_ITEMS = [
   { id: 'canvas', label: 'المساحة', icon: 'layers' },
 ];
 
-const DEMO_TILES = ['whatsapp', 'gallery', 'music', 'notes', 'browser', 'maps'];
+const DEMO_TILES = ['whatsapp', 'phone', 'gallery', 'music', 'browser', 'maps', 'notes', 'settings'];
 
 /* Arabic-aware search normalisation: hamza forms, tāʾ marbūṭa, alef maqṣūra,
    tatweel and diacritics collapse so «احمد» finds «أحمد». */

@@ -192,7 +192,9 @@ class NovaBridge(
 
     @JavascriptInterface
     fun setWallpaperMode(mode: String) {
-        val safe = if (mode == "system" || mode == "dim") mode else "aurora"
+        // system | dim → the phone's real wallpaper behind NOVA;
+        // anything else is a web-painted scene (aurora, sunset, …, custom)
+        val safe = if (mode == "system" || mode == "dim") mode else "web"
         NovaPrefs.setWallpaperMode(ctx, safe)
         activity.runOnUiThread { activity.applyWallpaperMode() }
     }

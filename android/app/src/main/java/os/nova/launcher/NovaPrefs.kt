@@ -41,7 +41,8 @@ object NovaPrefs {
         prefs(ctx).edit().putBoolean(KEY_SETUP_DONE, done).apply()
     }
 
-    /** aurora | system | dim — how the Dynamic Space background renders */
+    /** aurora | system | dim | web — how the Dynamic Space background renders.
+     *  "web" = a scene painted by the web layer (aurora, sunset, …, صورتي). */
     fun wallpaperMode(ctx: Context): String = prefs(ctx).getString(KEY_WALLPAPER, "aurora") ?: "aurora"
     fun setWallpaperMode(ctx: Context, mode: String) {
         prefs(ctx).edit().putString(KEY_WALLPAPER, mode).apply()

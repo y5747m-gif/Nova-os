@@ -85,6 +85,7 @@ try {
 Object.defineProperty(g, 'navigator', { value: window.navigator, configurable: true });
 g.location = window.location;
 g.history = window.history;
+g.localStorage = window.localStorage;
 g.innerWidth = 390;
 g.innerHeight = 844;
 g.AbortController = globalThis.AbortController;
@@ -375,6 +376,102 @@ window.NovaSystem = { download: () => {} };
 check('native shell detected when the bridge exists', window.NOVA.install !== undefined);
 window.NovaSystem = undefined;
 
+/* ══════════════════════════════════════════════════════════════
+   The FULL phone: every app exists, every app opens, the drawer
+   shows all of them, the ring is alive, and الإعدادات can change
+   the wallpaper + appearance from INSIDE the phone.
+   ══════════════════════════════════════════════════════════════ */
+const store = await import(`file://${ROOT}/src/core/store.js`);
+const wallMod = await import(`file://${ROOT}/src/core/wallpaper.js`);
+const APPS = store.APPS;
+const appIds = Object.keys(APPS);
+
+check('the catalogue is a FULL phone', appIds.length >= 28, String(appIds.length));
+check('wallpaper engine ships every scene', Object.keys(wallMod.WALLPAPERS).length >= 12, String(Object.keys(wallMod.WALLPAPERS).length));
+
+await goHome();
+check('كرة التطبيقات lives on the ring', window.document.querySelectorAll('#layer-home .home__ring .orb-item').length >= 4,
+  String(window.document.querySelectorAll('#layer-home .home__ring .orb-item').length));
+check('one tap door to كل التطبيقات', !!window.document.querySelector('#layer-home .home__all'));
+
+/* every app in the catalogue must open as a real surface */
+{
+  let opened = 0;
+  for (const id of appIds) {
+    N.openApp(id, null);
+    await new Promise((r) => setTimeout(r, 45));
+    if (window.document.querySelector(`#layer-apps .app[data-app="${id}"]`)) opened++;
+    N.ui.home.setHidden(false);
+  }
+  check('every app opens its own surface', opened === appIds.length, `${opened}/${appIds.length}`);
+  N.back();
+  await new Promise((r) => setTimeout(r, 400));
+  await goHome();
+}
+
+/* the drawer lists ALL of them */
+N.openPanel('core');
+await new Promise((r) => setTimeout(r, 400));
+N.ui.core.showAll();
+await new Promise((r) => setTimeout(r, 250));
+{
+  const tiles = window.document.querySelectorAll('#layer-panels .core__grid .app-tile');
+  check('«كل التطبيقات» drawer lists every app', tiles.length === appIds.length, String(tiles.length));
+}
+N.back();
+await new Promise((r) => setTimeout(r, 400));
+await goHome();
+
+/* الإعدادات — the control room: wallpaper + appearance from inside */
+N.openApp('settings', null);
+await new Promise((r) => setTimeout(r, 700));
+check('الإعدادات opens as a real surface', !!window.document.querySelector('#layer-apps .app[data-app="settings"]'));
+{
+  const swatches = window.document.querySelectorAll('#layer-apps .set__wall');
+  check('wallpaper picker shows every scene', swatches.length >= 10, String(swatches.length));
+  const sunset = window.document.querySelector('#layer-apps .set__wall[data-wall="sunset"]');
+  sunset.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 150));
+  check('changing the wallpaper applies instantly', window.document.body.dataset.wallpaper === 'sunset', window.document.body.dataset.wallpaper);
+  check('the wallpaper choice persists on the device', window.localStorage.getItem('nova.wallpaper.v1') === 'sunset',
+    String(window.localStorage.getItem('nova.wallpaper.v1')));
+  const paper = [...window.document.querySelectorAll('#layer-apps .set__chip')].find((c) => (c.textContent || '').includes('Paper'));
+  paper.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  check('المظهر flips NOVA Paper from inside the phone', window.document.body.dataset.mode === 'light', window.document.body.dataset.mode);
+  const dark = [...window.document.querySelectorAll('#layer-apps .set__chip')].find((c) => (c.textContent || '').includes('Dark'));
+  dark.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  const neonWall = window.document.querySelector('#layer-apps .set__wall[data-wall="neon"]');
+  neonWall.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  check('scenes switch live (neon)', window.document.body.dataset.wallpaper === 'neon', window.document.body.dataset.wallpaper);
+  const aurora = window.document.querySelector('#layer-apps .set__wall[data-wall="aurora"]');
+  aurora.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+}
+N.back();
+await new Promise((r) => setTimeout(r, 400));
+await goHome();
+
+/* ══════════════════════════════════════════════════════════════
+   انميشن اختيار التطبيق: icon → bubble → rise → pop ✦ NOVA OS ✦
+   ══════════════════════════════════════════════════════════════ */
+{
+  const cfgMod = await import(`file://${ROOT}/src/motion/config.js`);
+  cfgMod.setProfile('balanced');            // the ritual needs motion enabled
+  const card = window.document.querySelector('#layer-home .app-card') || window.document.querySelector('#layer-home .orb-item');
+  const appId = card?.dataset?.app;
+  N.openApp(appId, card);
+  await new Promise((r) => setTimeout(r, 70));
+  check('launch: the icon lifts off as a bubble', !!window.document.querySelector('#layer-overlay .launch__bubble'));
+  await new Promise((r) => setTimeout(r, 520));
+  check('launch: NOVA OS shines at the pop', !!window.document.querySelector('#layer-overlay .launch__brand'),
+    String(window.document.querySelectorAll('#layer-overlay .launch__star').length));
+  check('launch: the app blooms open after the pop', !!window.document.querySelector(`#layer-apps .app[data-app="${appId}"]`));
+  await new Promise((r) => setTimeout(r, 800));
+  N.back();
+  await goHome();
+}
+
 /* the service worker file must match the shipped version */
 const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
 const core = fs.readFileSync(path.join(ROOT, 'src/core/version.js'), 'utf8');
@@ -384,6 +481,13 @@ check('version.js matches VERSION', core.includes(`NOVA_VERSION = '${versionFile
 check('manifest is linked in index.html', fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('manifest.webmanifest'));
 check('manifest icons exist', ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png']
   .every((f) => fs.existsSync(path.join(ROOT, 'icons', f))));
+check('fx.css is linked (the loaded stylesheets cover every surface)', fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('styles/fx.css'));
+{
+  const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  const mustCache = ['./styles/fx.css', './src/core/launcher.js', './src/core/wallpaper.js', './src/motion/fx.js', './src/surfaces/setup.js'];
+  check('sw.js precaches every runtime module', mustCache.every((u) => swSrc.includes(`'${u}'`)),
+    mustCache.filter((u) => !swSrc.includes(`'${u}'`)).join(',') || 'all present');
+}
 
 await new Promise((r) => setTimeout(r, 300));
 const failed = results.filter((r) => !r.ok);

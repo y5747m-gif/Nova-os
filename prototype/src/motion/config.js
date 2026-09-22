@@ -139,6 +139,31 @@ export function currentOvershoot() {
   return z >= 1 ? 0 : overshootOf(springConfig('theme'));
 }
 
+/* ── persistence: التخصيصات تبقى بعد إعادة الفتح ─────────────────── */
+const STORE_KEY = 'nova.config.v1';
+
+function persist() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      profile: nova.profile, theme: nova.theme, mode: nova.mode, accent: nova.accent,
+    }));
+  } catch { /* private mode — choices just won't survive a reload */ }
+}
+
+function restore() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw) || {};
+    if (PROFILES[saved.profile]) nova.profile = saved.profile;
+    if (THEMES[saved.theme]) nova.theme = saved.theme;
+    if (saved.mode === 'dark' || saved.mode === 'light') nova.mode = saved.mode;
+    if (ACCENTS[saved.accent]) nova.accent = saved.accent;
+  } catch { /* ignore */ }
+}
+
 /* ── apply to the document ───────────────────────────────────────── */
 export function applyConfig() {
   const body = document.body;
@@ -159,5 +184,9 @@ export function applyConfig() {
   root.setProperty('--nv-slow', `${duration(TOKENS.SLOW)}ms`);
   root.setProperty('--nv-long', `${duration(TOKENS.LONG)}ms`);
 
+  persist();
   for (const fn of listeners) fn(nova);
 }
+
+/* bring back the last choices on boot (before the first applyConfig) */
+restore();

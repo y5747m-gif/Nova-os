@@ -422,9 +422,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } catch (_: Exception) { }
+        // web-painted scenes (aurora … custom «صورتي») live in the web layer —
+        // it owns data-wallpaper, so the shell just stands down
         wallpaperView?.visibility = View.GONE
         web.setBackgroundColor(Color.parseColor("#07080B"))
-        web.evaluateJavascript("document.body.dataset.wallpaper='aurora'", null)
     }
 
     fun pickSystemWallpaper() {
