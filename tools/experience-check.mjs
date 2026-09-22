@@ -94,7 +94,7 @@ g.AbortController = globalThis.AbortController;
 /* jsdom 25 has no PointerEvent constructor — build one either way. */
 function mkEv(type, opts) {
   let ev;
-  try { ev = mkEv(type, opts); }
+  try { ev = new window.PointerEvent(type, opts); }
   catch { ev = new window.MouseEvent(type, opts); }
   if (opts.pointerId !== undefined && ev.pointerId === undefined) {
     Object.defineProperty(ev, 'pointerId', { value: opts.pointerId });
@@ -530,6 +530,33 @@ check('fx.css is linked (the loaded stylesheets cover every surface)', fs.readFi
   const mustCache = ['./styles/fx.css', './src/core/launcher.js', './src/core/wallpaper.js', './src/motion/fx.js', './src/surfaces/setup.js', './src/surfaces/launch.js'];
   check('sw.js precaches every runtime module', mustCache.every((u) => swSrc.includes(`'${u}'`)),
     mustCache.filter((u) => !swSrc.includes(`'${u}'`)).join(',') || 'all present');
+}
+
+/* ── taps must reach buttons: no pointer capture before a swipe engages ──
+   Capturing the pointer on every pointerdown makes the browser retarget the
+   `click` to the capturing element (#screen), so nothing inside the phone is
+   clickable. Guard the fix at the source level and in the live DOM. */
+{
+  const gsrc = fs.readFileSync(path.join(ROOT, 'src/motion/gestures.js'), 'utf8');
+  const downBody = gsrc.slice(gsrc.indexOf('function down(e)'), gsrc.indexOf('function move(e)'));
+  check('gestures: pointerdown never captures the pointer (clicks survive)', !downBody.includes('setPointerCapture'));
+  const dragDown = gsrc.slice(gsrc.lastIndexOf('function down(e)'), gsrc.lastIndexOf('function move(e)'));
+  check('draggable: pointerdown never captures the pointer', !dragDown.includes('setPointerCapture'));
+
+  const css = fs.readFileSync(path.join(ROOT, 'styles/shell.css'), 'utf8');
+  check('shell.css: empty layers are transparent to the pointer', /\.layer\s*\{[^}]*pointer-events:\s*none/.test(css) && /\.layer\s*>\s*\*\s*\{[^}]*pointer-events:\s*auto/.test(css));
+
+  // a plain tap (down → up with no movement) on a deck chip still clicks
+  let clicked = 0;
+  const btn = window.document.querySelector('#deck-actions .chip');
+  const screenEl = window.document.getElementById('screen');
+  let captured = false;
+  screenEl.setPointerCapture = () => { captured = true; };
+  const tap = (type, x, y) => screenEl.dispatchEvent(mkEv(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 9, button: 0 }));
+  tap('pointerdown', 200, 400); tap('pointerup', 200, 400);
+  check('gestures: a plain tap on the screen does not capture the pointer', !captured);
+  if (btn) { btn.addEventListener('click', () => { clicked++; }, { once: true }); btn.click(); }
+  check('deck: action chips are clickable', clicked === 1);
 }
 
 await new Promise((r) => setTimeout(r, 300));
