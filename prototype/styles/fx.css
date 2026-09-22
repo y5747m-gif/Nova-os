@@ -26,12 +26,12 @@
 .wallpaper::before {
   content: ""; position: absolute; inset: 0; z-index: 3;
   background:
-    radial-gradient(130% 100% at 50% 0%, transparent 55%, rgba(0, 0, 0, .38)),
+    radial-gradient(140% 110% at 50% 42%, transparent 64%, rgba(0, 0, 0, .15) 100%),
     repeating-conic-gradient(rgba(255, 255, 255, .014) 0 .00006turn, transparent .00006turn .00012turn);
   pointer-events: none;
 }
 body[data-mode="light"] .wallpaper::before {
-  background: radial-gradient(130% 100% at 50% 0%, transparent 60%, rgba(17, 19, 24, .14));
+  background: radial-gradient(140% 110% at 50% 42%, transparent 70%, rgba(17, 19, 24, .07) 100%);
 }
 
 /* ── boot splash ─────────────────────────────────────────────── */
@@ -88,12 +88,17 @@ body[data-motion="reduced"] .boot__bar i { animation-duration: .2s; }
   font-size: 54px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.05;
   font-variant-numeric: tabular-nums;
   background: linear-gradient(120deg, var(--nv-text) 30%, color-mix(in srgb, var(--nv-accent-2) 65%, #fff) 75%);
+  background-size: 180% 100%;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
-  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, .35));
+  filter: drop-shadow(0 8px 28px rgba(0, 0, 0, .22));
+  animation: clock-drift 9s ease-in-out infinite alternate;
 }
+@keyframes clock-drift { to { background-position: 100% 0; } }
+body[data-motion="reduced"] .home__clock { animation: none; }
 body[data-mode="light"] .home__clock {
-  background: linear-gradient(120deg, #111318 30%, var(--nv-accent) 80%);
+  background: linear-gradient(120deg, #1c1a16 30%, var(--nv-accent) 80%);
+  background-size: 180% 100%;
   -webkit-background-clip: text; background-clip: text;
 }
 .home__greet h2 { font-size: 21px; }
@@ -101,7 +106,7 @@ body[data-mode="light"] .home__clock {
 
 /* suggestion cards: gradient hairline + lift */
 .app-card {
-  border: 1px solid color-mix(in srgb, var(--nv-accent) 26%, var(--nv-line));
+  border: 1px solid color-mix(in srgb, var(--nv-accent) 16%, var(--nv-line));
   box-shadow: var(--nv-shadow-card), inset 0 1px 0 rgba(255, 255, 255, .06);
 }
 .app-card:active { border-color: color-mix(in srgb, var(--nv-accent) 55%, transparent); }
@@ -418,7 +423,7 @@ body[data-wallpaper="mono"] {
 
 /* light paper mode keeps every scene readable */
 body[data-mode="light"][data-wallpaper] {
-  --nv-wall-scrim: #eceef2;
+  --nv-wall-scrim: #f0e9dd;
 }
 
 /* «صورتي» — the user's own photo, with a soft living veil */

@@ -18,9 +18,9 @@
 /* ══════════════════  DYNAMIC SPACE (home)  ══════════════════ */
 .home {
   position: absolute; inset: 0;
-  padding: 66px 22px 26px;
+  padding: 70px 24px 28px;
   display: flex; flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   color: var(--nv-text);
 }
 .home[data-hidden="1"] { visibility: hidden; }
@@ -55,20 +55,36 @@
   margin: 4px 4px -6px;
 }
 
-/* context ring — orbital orbs */
+/* context ring — orbs orbit in OPEN space: a living gradient arc,
+   never a closed dashed fence */
 .home__ring {
   position: relative;
-  height: 120px;
+  height: 128px;
   margin: 2px 0 2px;
+}
+.home__ring::before {
+  content: "";
+  position: absolute; left: 50%; top: 50%; width: 250px; height: 250px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--nv-accent) 13%, transparent) 0%, transparent 62%);
+  pointer-events: none;
 }
 .home__ring .ring-line {
   position: absolute; left: 50%; top: 50%;
   width: 172px; height: 172px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 1px dashed var(--nv-line-strong);
-  opacity: .5;
+  background: conic-gradient(from 0deg,
+    transparent 0 38%,
+    color-mix(in srgb, var(--nv-accent) 42%, transparent) 50%,
+    transparent 62% 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1.8px), #000 calc(100% - 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 1.8px), #000 calc(100% - 1px));
+  opacity: .6;
+  animation: orbit-turn 26s linear infinite;
 }
+@keyframes orbit-turn { to { transform: translate(-50%, -50%) rotate(360deg); } }
+body[data-motion="reduced"] .home__ring .ring-line { animation: none; }
 .orb-item {
   position: absolute;
   left: 50%; top: 50%;
@@ -88,11 +104,11 @@
   pointer-events: none;
 }
 
-/* app cards row */
-.home__cards { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+/* app cards row — airy, soft, delightful to the touch */
+.home__cards { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
 .app-card {
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 14px;
+  padding: 15px 15px;
   cursor: pointer;
   will-change: transform;
   transform-origin: center;
