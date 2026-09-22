@@ -1,6 +1,6 @@
 {
   "name": "nova-os",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "NOVA OS — a new way to use your phone. Docs + Phase 1 interactive prototype.",

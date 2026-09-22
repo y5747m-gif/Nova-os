@@ -9,6 +9,7 @@
 import { h, gradient } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { appMeta, APPS, CONTACTS } from '../core/store.js';
+import { draggable } from '../motion/gestures.js';
 import {
   isNativeLauncher, dialNumber, pickWallpaper,
 } from '../core/launcher.js';
@@ -43,7 +44,7 @@ export function contentFor(appId, ctx = {}) {
     case 'phone': return phoneContent(ctx);
     case 'contacts': return contactsContent(ctx);
     case 'camera': return cameraContent(ctx);
-    case 'video': return videoContent();
+    case 'video': return videoContent(ctx);
     case 'mail': return mailContent();
     case 'calendar': return calendarContent();
     case 'clock': return clockContent();
@@ -462,12 +463,201 @@ function cameraContent(ctx) {
   );
 }
 
-function videoContent() {
-  return h('div', { class: 'vid' },
-    h('div', { class: 'vid__grid' }, ...Array.from({ length: 6 }, (_, i) => h('div', { class: 'vid__card', style: { background: gradient(i + 8) } },
+/* ══════════════════════════════════════════════════════════════
+   البكرات (Reels) — short clips that really play: the clip
+   auto-progresses, the feed moves by swipe or arrow, double-tap
+   likes. Playing is real media state — live events become orbs
+   and never interrupt the clip (docs/01 §7).
+   ══════════════════════════════════════════════════════════════ */
+const REELS = [
+  { t: 'رحلة الغردقة', emo: '🌊', by: 'سارة', cap: 'أول يوم على البحر 🌊', likes: 243, cm: 18, dur: 6 },
+  { t: 'حفل NOVA', emo: '🎤', by: 'فريق NOVA', cap: 'لقطات من حفل الإطلاق ✨', likes: 512, cm: 64, dur: 7 },
+  { t: 'يوم في المزرعة', emo: '🌾', by: 'آدم', cap: 'هدوء الصبح في المزرعة', likes: 97, cm: 9, dur: 5 },
+  { t: 'تقرير الألعاب', emo: '🎮', by: 'NOVA PLAY', cap: 'أسرع ألعاب هذا الأسبوع 🎮', likes: 320, cm: 41, dur: 6 },
+  { t: 'جلسة تصوير', emo: '📸', by: 'ليلى', cap: 'خلف الكواليس 📸', likes: 180, cm: 12, dur: 5 },
+  { t: 'وقت الغروب', emo: '🌅', by: 'محمد', cap: 'الغروب من شرفة البيت 🌅', likes: 428, cm: 27, dur: 6 },
+];
+
+function reelFeed(ctx, at = 0) {
+  const N = REELS.length;
+  let idx = ((at % N) + N) % N;
+  let p = 0;
+  let playing = true;
+  let tapAt = 0;
+  let tapTimer = 0;
+  let suppressClick = false;
+  const liked = new Set();
+
+  /* ── the clip ─────────────────────────────────────────────── */
+  const fill = h('b', {});
+  const bar = h('div', { class: 'reel__bar' }, fill);
+  const film = h('div', { class: 'reel__film' });
+  const emo = h('div', { class: 'reel__emo' }, '🌊');
+  const scene = h('div', { class: 'reel__scene' }, film, emo);
+  const stack = h('div', { class: 'reel__stack', dataset: { drag: 'reel' } }, scene);
+  const glyph = h('div', { class: 'reel__glyph' });
+
+  /* ── meta + actions ───────────────────────────────────────── */
+  const who = h('b', {}, '');
+  const cap = h('span', {}, '');
+  const av = h('span', { class: 'reel__av' });
+  const audioBy = h('small', {}, '');
+  const meta = h('div', { class: 'reel__meta' },
+    av,
+    h('div', { class: 'reel__txt' }, who, cap, h('div', { class: 'reel__audio' }, '♪ صوت أصلي — ', audioBy)));
+
+  const likeCnt = h('span', { class: 'reel__cnt' }, '0');
+  const likeBtn = h('button', {
+    class: 'reel__act', dataset: { nodrag: '1' }, title: 'إعجاب',
+    onclick: () => toggleLike(),
+  }, h('span', { html: icon('heart', 'ico ico--sm') }), likeCnt);
+  const cmCnt = h('span', { class: 'reel__cnt' }, '0');
+  const cmBtn = h('button', {
+    class: 'reel__act', dataset: { nodrag: '1' }, title: 'تعليقات',
+    onclick: () => { ctx.emit?.('tick'); ctx.toast?.('التعليقات على البكرة'); },
+  }, h('span', {}, '💬'), cmCnt);
+  const shareBtn = h('button', {
+    class: 'reel__act', dataset: { nodrag: '1' }, title: 'مشاركة',
+    onclick: () => { ctx.emit?.('success'); ctx.toast?.('تمت مشاركة البكرة'); },
+  }, h('span', {}, '↗'), h('span', { class: 'reel__cnt' }, 'مشاركة'));
+  const side = h('div', { class: 'reel__side' }, likeBtn, cmBtn, shareBtn);
+
+  const navBtn = (cls, dir) => h('button', {
+    class: `reel__nav ${cls}`, dataset: { nodrag: '1' }, html: icon('chevron', 'ico ico--sm'),
+    onclick: () => go(dir),
+  });
+  const prevBtn = navBtn('reel__nav--prev', -1);
+  const nextBtn = navBtn('reel__nav--next', 1);
+
+  const el = h('div', { class: 'reel' }, bar, stack, meta, side, prevBtn, nextBtn, glyph);
+
+  /* ── state ────────────────────────────────────────────────── */
+  function paint() {
+    const r = REELS[idx];
+    film.style.background = gradient(idx + 8);
+    emo.textContent = r.emo;
+    av.style.background = gradient(idx + 1);
+    who.textContent = r.by;
+    cap.textContent = r.cap;
+    audioBy.textContent = r.by;
+    cmCnt.textContent = String(r.cm);
+    const on = liked.has(idx);
+    likeBtn.classList.toggle('reel__act--on', on);
+    likeCnt.textContent = String(r.likes + (on ? 1 : 0));
+    fill.style.transform = `scaleX(${p})`;
+  }
+
+  function setPlaying(v) {
+    playing = v;
+    el.classList.toggle('reel--paused', !v);
+    glyph.innerHTML = icon(v ? 'pause' : 'play', 'ico');
+    glyph.dataset.flash = '1';
+    setTimeout(() => { delete glyph.dataset.flash; }, 450);
+    ctx.onMedia?.(v);
+  }
+
+  function toggleLike(force) {
+    const on = force === true ? true : !liked.has(idx);
+    if (on) liked.add(idx); else liked.delete(idx);
+    paint();
+    if (on) {
+      const heart = h('span', { class: 'reel__heart' }, '❤️');
+      stack.append(heart);
+      setTimeout(() => heart.remove(), 950);
+      ctx.emit?.('success');
+    } else ctx.emit?.('close');
+  }
+
+  function go(dir) {
+    idx = (idx + dir + N) % N;
+    p = 0;
+    paint();
+    stack.style.transform = '';
+    stack.classList.remove('reel__snap', 'reel__in-up', 'reel__in-down');
+    void stack.offsetWidth;
+    stack.classList.add(dir > 0 ? 'reel__in-up' : 'reel__in-down');
+    ctx.emit?.('tick');
+  }
+
+  /* ── gestures: one tap plays/pauses · double-tap likes ·
+        vertical swipe moves in the feed ───────────────────────── */
+  stack.addEventListener('click', () => {
+    if (suppressClick) { suppressClick = false; return; }
+    const now = Date.now();
+    if (now - tapAt < 260) { clearTimeout(tapTimer); tapAt = 0; toggleLike(true); return; }
+    tapAt = now;
+    tapTimer = setTimeout(() => setPlaying(!playing), 250);
+  });
+
+  draggable(stack, {
+    axis: 'y',
+    onMove: (e, s) => {
+      stack.style.transform = `translate3d(0, ${(s.dy * 0.55).toFixed(1)}px, 0)`;
+    },
+    onEnd: (e, s) => {
+      suppressClick = true;
+      if (s.dy <= -46) { go(1); return; }
+      if (s.dy >= 46) { go(-1); return; }
+      stack.classList.add('reel__snap');
+      stack.style.transform = '';
+      setTimeout(() => stack.classList.remove('reel__snap'), 300);
+    },
+  });
+
+  /* ── the playhead: auto-advance, self-cleaning ────────────── */
+  const timer = setInterval(() => {
+    if (!el.isConnected) { clearInterval(timer); clearTimeout(tapTimer); ctx.onMedia?.(false); return; }
+    if (!playing) return;
+    p += 90 / (REELS[idx].dur * 1000);
+    if (p >= 1) { p = 0; go(1); return; }
+    fill.style.transform = `scaleX(${p})`;
+  }, 90);
+
+  paint();
+  setTimeout(() => ctx.onMedia?.(true), 0);
+
+  return {
+    el,
+    destroy: () => { clearInterval(timer); clearTimeout(tapTimer); ctx.onMedia?.(false); },
+  };
+}
+
+function videoContent(ctx) {
+  const stage = h('div', { class: 'vid__stage' });
+  let feed = null;
+  const tabs = {};
+
+  function library() {
+    return h('div', { class: 'vid__grid' }, ...REELS.map((r, i) => h('button', {
+      class: 'vid__card',
+      dataset: { reel: String(i) },
+      style: { background: gradient(i + 8) },
+      onclick: () => show('reels', i),
+    },
       h('span', { class: 'vid__play', html: icon('play', 'ico ico--sm') }),
-      h('small', {}, ['رحلة الغردقة', 'حفل NOVA', 'يوم في المزرعة', 'تقرير الألعاب', 'جلسة تصوير', 'وقت الغروب'][i]),
-    ))),
+      h('small', {}, r.t))));
+  }
+
+  function show(tab, at = 0) {
+    for (const k of Object.keys(tabs)) tabs[k].setAttribute('aria-pressed', String(k === tab));
+    feed?.destroy?.();
+    feed = null;
+    if (tab === 'reels') {
+      feed = reelFeed(ctx, at);
+      stage.replaceChildren(feed.el);
+    } else {
+      ctx.onMedia?.(false);
+      stage.replaceChildren(library());
+    }
+  }
+
+  tabs.reels = h('button', { class: 'vid__tab', onclick: () => show('reels', 0) }, 'البكرات');
+  tabs.lib = h('button', { class: 'vid__tab', onclick: () => show('lib') }, 'المكتبة');
+  show('reels', 0);
+
+  return h('div', { class: 'vid' },
+    h('div', { class: 'vid__tabs' }, tabs.reels, tabs.lib),
+    stage,
   );
 }
 
@@ -919,6 +1109,10 @@ export function previewFor(appId) {
     case 'music':
       return h('div', {}, h('div', { style: { height: '74px', borderRadius: '12px', background: 'linear-gradient(150deg, var(--nv-accent), var(--nv-accent-2))', marginBottom: '8px' } }),
         h('div', { class: 'line', style: { width: '70%' } }), h('div', { class: 'line', style: { width: '45%' } }));
+    case 'video':
+      return h('div', {}, h('div', { style: { height: '74px', borderRadius: '12px', background: gradient(8), marginBottom: '8px', display: 'grid', placeItems: 'center' } },
+        h('span', { class: 'vid__play', html: icon('play', 'ico ico--sm') })),
+        h('div', { class: 'line', style: { width: '58%' } }));
     case 'maps':
       return h('div', { style: { flex: '1', borderRadius: '12px', background: 'repeating-linear-gradient(115deg, color-mix(in srgb, var(--nv-text) 7%, transparent) 0 16px, transparent 16px 32px), var(--nv-bg-2)' } });
     case 'weather':

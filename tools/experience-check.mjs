@@ -476,6 +476,45 @@ await goHome();
   await goHome();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   البكرات (Reels) — clips that really play
+   ══════════════════════════════════════════════════════════════ */
+N.openApp('video', null);
+await new Promise((r) => setTimeout(r, 450));
+{
+  const reel = window.document.querySelector('#layer-apps .reel');
+  check('reels: البكرات plays on open', !!reel && !reel.classList.contains('reel--paused'), reel?.className || 'no reel');
+  await new Promise((r) => setTimeout(r, 450));
+  const fillT = window.document.querySelector('#layer-apps .reel__bar b')?.style.transform || '';
+  check('reels: the clip auto-progresses', /^scaleX\((0\.\d+|1)/.test(fillT), fillT || 'no fill');
+  check('reels: media plays loud (events must not interrupt)', N.state.mediaPlaying === true, String(N.state.mediaPlaying));
+  const cap0 = window.document.querySelector('#layer-apps .reel__txt span')?.textContent || '';
+  window.document.querySelector('#layer-apps .reel__nav--next')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  const cap1 = window.document.querySelector('#layer-apps .reel__txt span')?.textContent || '';
+  check('reels: the feed moves between clips', cap0 !== cap1 && cap1.length > 0, `${cap0} → ${cap1}`);
+  window.document.querySelector('#layer-apps .reel__act')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  check('reels: like reacts', !!window.document.querySelector('#layer-apps .reel__act--on'));
+  window.document.querySelector('#layer-apps .reel__stack')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 320));
+  check('reels: one tap pauses and media goes quiet',
+    !!window.document.querySelector('#layer-apps .reel--paused') && N.state.mediaPlaying === false);
+  window.document.querySelector('#layer-apps .reel__stack')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 320));
+  check('reels: tap again resumes the clip',
+    !window.document.querySelector('#layer-apps .reel--paused') && N.state.mediaPlaying === true);
+  const libTab = [...window.document.querySelectorAll('#layer-apps .vid__tab')].find((t) => (t.textContent || '').includes('المكتبة'));
+  libTab?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  check('reels: the library holds every clip', window.document.querySelectorAll('#layer-apps .vid__card').length === 6,
+    String(window.document.querySelectorAll('#layer-apps .vid__card').length));
+  window.document.querySelector('#layer-apps .vid__card[data-reel="3"]')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  const cap3 = window.document.querySelector('#layer-apps .reel__txt span')?.textContent || '';
+  check('reels: a library card opens its own clip', cap3.includes('ألعاب'), cap3);
+}
+await goHome();
+
 /* the service worker file must match the shipped version */
 const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
 const core = fs.readFileSync(path.join(ROOT, 'src/core/version.js'), 'utf8');

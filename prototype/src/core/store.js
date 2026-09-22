@@ -15,7 +15,7 @@ export const APPS = {
   camera:    { id: 'camera',    name: 'الكاميرا',       kind: 'camera',   icon: 'camera',   color: '#ff6b9a', sub: 'جاهزة للتصوير',            title: 'الكاميرا',       titleSub: 'الوضع التلقائي' },
   gallery:   { id: 'gallery',   name: 'الصور',          kind: 'gallery',  icon: 'gallery',  color: '#ff6b9a', sub: '128 عنصر · آخر تحديث اليوم', title: 'الصور',        titleSub: 'آخر 12 صورة' },
   music:     { id: 'music',     name: 'الموسيقى',       kind: 'music',    icon: 'music',    color: '#6c5ce7', sub: 'يشغل الآن · Aurora Drift',  title: 'Aurora Drift',   titleSub: 'NOVA Sessions' },
-  video:     { id: 'video',     name: 'الفيديو',        kind: 'video',    icon: 'play',     color: '#f5a524', sub: '12 فيديو · 3 قوائم تشغيل',  title: 'الفيديو',       titleSub: 'مكتبتك' },
+  video:     { id: 'video',     name: 'الفيديو',        kind: 'video',    icon: 'play',     color: '#f5a524', sub: 'بكرات يومية · مكتبتك',     title: 'الفيديو',       titleSub: 'البكرات' },
   podcasts:  { id: 'podcasts',  name: 'البودكاست',      kind: 'podcast',  icon: 'mic',      color: '#a78bfa', sub: 'حلقة جديدة · 38 دقيقة',     title: 'البودكاست',      titleSub: 'استمر من 12:04' },
   books:     { id: 'books',     name: 'الكتب',          kind: 'books',    icon: 'book',     color: '#f5a524', sub: 'تقرأ الآن · 64%',           title: 'الكتب',          titleSub: 'مكتبتك' },
   notes:     { id: 'notes',     name: 'الملاحظات',      kind: 'notes',    icon: 'notes',    color: '#f5a524', sub: 'آخر ملاحظة: خطة الأسبوع',   title: 'خطة الأسبوع',    titleSub: 'آخر تعديل اليوم' },
