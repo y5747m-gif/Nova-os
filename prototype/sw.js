@@ -47,6 +47,7 @@ const SHELL = [
   './src/surfaces/split.js',
   './src/surfaces/dnd.js',
   './src/surfaces/setup.js',
+  './src/surfaces/launch.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

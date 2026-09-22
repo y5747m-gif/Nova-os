@@ -64,3 +64,28 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
+
+      # A deploy is only done when it is proven done: the shipping harness
+      # fetches the site the way a phone would and asserts THIS version is
+      # what answers (tools/deploy-check.mjs).
+      - name: Checkout
+        if: always()
+        uses: actions/checkout@v5
+
+      - name: Node
+        if: always()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify the deployment (shipping harness)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.deployment.outcome }}" != "success" ]; then
+            echo "the deploy step itself failed — running the harness to say exactly why"
+            node tools/deploy-check.mjs --live --retries 2 --wait-ms 5000
+            exit 1
+          fi
+          node tools/deploy-check.mjs --live --site "${{ steps.deployment.outputs.page_url }}" --retries 30 --wait-ms 10000

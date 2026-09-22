@@ -32,7 +32,7 @@
 | `docs/05-design-tokens.md` | Color (dark/light), typography, spacing, radii, elevation, sound set, haptic set. |
 | `prototype/` | Zero-dependency interactive web prototype of the NOVA experience (Arabic RTL UI). |
 | `docs/06-install.md` | PWA install, APK build (CI + local), signing, self-update, known limits. |
-| `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks, icon + asset staging, version bump. |
+| `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks, the **shipping harness** (deploy-check: local deployability + live delivery verification + red/green selftest), icon + asset staging, version bump. |
 | `package.json` | `npm run serve` + `npm run check`. |
 
 ## Install it on a phone
@@ -69,6 +69,10 @@ Two real paths — full guide in **`docs/06-install.md`**:
 
 - **https://y5747m-gif.github.io/Nova-os/** — GitHub Pages, published by
   `.github/workflows/pages.yml` (runs the quality gates first; a broken prototype never deploys).
+  The deploy job ends with the **shipping harness** (`tools/deploy-check.mjs --live`): the deploy
+  only counts as done once the site is proven to answer with the pushed version. One-time setup:
+  the repo must have **Settings → Pages → Source = GitHub Actions** (the harness says exactly this
+  when it is missing).
 - **https://nova-os-topaz-rho.vercel.app** — Vercel Production (auto-builds from `main`;
   `vercel.json` makes `prototype/` the site root).
 
@@ -109,6 +113,7 @@ npm run check    # the four gates below
 | `npm run check:classes` | Every class the JS builds exists in the CSS (no silent unstyled surface). |
 | `npm run check:springs` | 109 physics assertions: every profile × theme stays inside the 6 % overshoot budget, settles in time, and Reduced Motion is critically damped with no blur/arcs. |
 | `npm run check:experience` | 50 assertions driving the real modules through jsdom: unlock, morph, interactive back, NovaBack's whole stack, CORE, FLOW, orb, canvas, drag & drop, split flow, sweep, the install sheet, the config matrix, and version/manifest consistency. |
+| `npm run check:deploy` | The shipping harness (`tools/deploy-check.mjs`): every file `index.html` references exists, the manifest is valid and relative-pathed, the service worker precaches the **whole module graph** (walked statically), the workflow contract is intact, versions agree. `npm run check:deploy:live` additionally proves the deployed site answers with this version and the APK asset downloads; `npm run check:deploy:selftest` corrupts a scratch copy three ways and asserts the harness turns RED (a harness that cannot fail is a rubber stamp). |
 
 ## The prototype covers
 

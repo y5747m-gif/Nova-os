@@ -12,7 +12,10 @@
 
 - <https://y5747m-gif.github.io/Nova-os/> — GitHub Pages, published by `.github/workflows/pages.yml`
   on every push that touches the prototype (the workflow runs the quality gates first; a broken
-  prototype never deploys).
+  prototype never deploys). After the deploy, the **shipping harness**
+  (`tools/deploy-check.mjs --live`) fetches the site and asserts the pushed version is what
+  answers — the deploy only counts when proven delivered. One-time repo setup: **Settings →
+  Pages → Source = GitHub Actions** (if it is off, every deploy fails and the harness names the fix).
 - <https://nova-os-topaz-rho.vercel.app> — Vercel Production, auto-built from `main`
   (`vercel.json` serves `prototype/` as the site root).
 

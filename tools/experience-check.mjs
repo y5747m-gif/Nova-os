@@ -527,7 +527,7 @@ check('manifest icons exist', ['icon-192.png', 'icon-512.png', 'icon-maskable-51
 check('fx.css is linked (the loaded stylesheets cover every surface)', fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('styles/fx.css'));
 {
   const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  const mustCache = ['./styles/fx.css', './src/core/launcher.js', './src/core/wallpaper.js', './src/motion/fx.js', './src/surfaces/setup.js'];
+  const mustCache = ['./styles/fx.css', './src/core/launcher.js', './src/core/wallpaper.js', './src/motion/fx.js', './src/surfaces/setup.js', './src/surfaces/launch.js'];
   check('sw.js precaches every runtime module', mustCache.every((u) => swSrc.includes(`'${u}'`)),
     mustCache.filter((u) => !swSrc.includes(`'${u}'`)).join(',') || 'all present');
 }
