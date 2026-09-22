@@ -33,6 +33,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # Self-heal: a Pages site built by Actions must exist before anything can
+      # deploy to it. Try to create it with the permissions this workflow
+      # carries (pages: write) — and if GitHub refuses (site creation needs a
+      # repo admin), fail loudly with the exact one-time fix instead of
+      # letting the deploy die with a cryptic 404.
+      - name: Ensure GitHub Pages exists (self-heal)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/pages" >/dev/null 2>&1; then
+            echo "Pages site already configured"
+            exit 0
+          fi
+          echo "no Pages site yet — trying to create it (GitHub Actions as the source)"
+          if gh api -X POST "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow; then
+            echo "Pages site created — giving it a moment to provision"
+            sleep 15
+            exit 0
+          fi
+          echo "::error::GitHub Pages is not enabled for this repo, and the workflow token is not allowed to create it."
+          echo "::error::One-time fix (repo admin): https://github.com/$GITHUB_REPOSITORY/settings/pages → Build and deployment → Source: GitHub Actions."
+          exit 1
+
       - name: Node
         uses: actions/setup-node@v4
         with:
@@ -64,3 +87,28 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
+
+      # A deploy is only done when it is proven done: the shipping harness
+      # fetches the site the way a phone would and asserts THIS version is
+      # what answers (tools/deploy-check.mjs).
+      - name: Checkout
+        if: always()
+        uses: actions/checkout@v5
+
+      - name: Node
+        if: always()
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify the deployment (shipping harness)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.deployment.outcome }}" != "success" ]; then
+            echo "the deploy step itself failed — running the harness to say exactly why"
+            node tools/deploy-check.mjs --live --retries 2 --wait-ms 5000
+            exit 1
+          fi
+          node tools/deploy-check.mjs --live --site "${{ steps.deployment.outputs.page_url }}" --retries 30 --wait-ms 10000

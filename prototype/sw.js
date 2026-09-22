@@ -7,7 +7,7 @@
    NOVA_VERSION must match src/core/version.js and /VERSION.
    ══════════════════════════════════════════════════════════════ */
 
-const NOVA_VERSION = '0.8.0';
+const NOVA_VERSION = '0.8.1';
 const CACHE = `nova-shell-${NOVA_VERSION}`;
 
 const SHELL = [
@@ -47,6 +47,7 @@ const SHELL = [
   './src/surfaces/split.js',
   './src/surfaces/dnd.js',
   './src/surfaces/setup.js',
+  './src/surfaces/launch.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
