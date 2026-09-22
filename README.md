@@ -52,11 +52,21 @@ Two real paths — full guide in **`docs/06-install.md`**:
 | `prototype/manifest.webmanifest`, `prototype/sw.js` | Installable web app + offline shell. |
 | `android/` | The APK project (Kotlin, AGP 8.5, minSdk 26, WebViewAssetLoader). |
 | `.github/workflows/apk.yml` | Builds the APK, runs the quality gates, publishes the release asset. |
+| `.github/workflows/pages.yml` | Deploys `prototype/` to GitHub Pages — the live NOVA URL. |
 | `tools/stage-assets.sh` | Copies the web experience into the APK assets. |
 | `tools/make-icons.sh` | Regenerates every launcher/PWA icon from the icon master. |
 | `tools/bump-version.mjs` | One command keeps `VERSION`, `version.js` and `sw.js` in sync. |
 
 ## Run the prototype
+
+**Live site (no setup):** the NOVA URL is deployed automatically on every push:
+
+- **https://y5747m-gif.github.io/Nova-os/** — GitHub Pages, published by
+  `.github/workflows/pages.yml` (runs the quality gates first; a broken prototype never deploys).
+- **https://nova-os-topaz-rho.vercel.app** — Vercel Production (auto-builds from `main`;
+  `vercel.json` makes `prototype/` the site root).
+
+That URL is also what the PWA installs from (`docs/06-install.md` §1).
 
 ```bash
 # from the repo root
