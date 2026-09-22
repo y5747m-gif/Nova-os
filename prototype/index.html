@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="styles/tokens.css" />
 <link rel="stylesheet" href="styles/shell.css" />
 <link rel="stylesheet" href="styles/surfaces.css" />
+<link rel="stylesheet" href="styles/fx.css" />
 <link rel="stylesheet" href="styles/install.css" />
 <link rel="stylesheet" href="styles/shell-android.css" />
 </head>
@@ -32,7 +33,21 @@
     <div class="device" id="device">
       <div class="device-notch" aria-hidden="true"></div>
       <div class="screen" id="screen">
-        <div class="layer wallpaper" id="layer-wallpaper" aria-hidden="true"><canvas class="fx" id="fx"></canvas></div>
+        <div class="layer wallpaper" id="layer-wallpaper" aria-hidden="true">
+          <u class="wall__star" style="--x:7%;--y:12%;--s:2.2px;--t:3.8s;--d:.2s"></u>
+          <u class="wall__star" style="--x:19%;--y:34%;--s:1.4px;--t:3.1s;--d:1.1s"></u>
+          <u class="wall__star" style="--x:11%;--y:63%;--s:1.8px;--t:4.4s;--d:.6s"></u>
+          <u class="wall__star" style="--x:27%;--y:82%;--s:1.3px;--t:3.4s;--d:1.8s"></u>
+          <u class="wall__star" style="--x:38%;--y:18%;--s:1.5px;--t:4.1s;--d:.4s"></u>
+          <u class="wall__star" style="--x:47%;--y:52%;--s:1.2px;--t:3s;--d:1.4s"></u>
+          <u class="wall__star" style="--x:56%;--y:88%;--s:2px;--t:4.6s;--d:.9s"></u>
+          <u class="wall__star" style="--x:64%;--y:27%;--s:1.4px;--t:3.5s;--d:2s"></u>
+          <u class="wall__star" style="--x:73%;--y:60%;--s:1.7px;--t:4s;--d:.3s"></u>
+          <u class="wall__star" style="--x:82%;--y:15%;--s:1.3px;--t:3.2s;--d:1.5s"></u>
+          <u class="wall__star" style="--x:91%;--y:44%;--s:2.1px;--t:4.3s;--d:.7s"></u>
+          <u class="wall__star" style="--x:86%;--y:78%;--s:1.5px;--t:3.7s;--d:1.2s"></u>
+          <canvas class="fx" id="fx"></canvas>
+        </div>
         <div class="layer" id="layer-home"></div>
         <div class="layer" id="layer-apps"></div>
         <div class="layer" id="layer-split"></div>
@@ -45,7 +60,7 @@
         <div class="edge-hint edge-hint--top" id="hint-top" aria-hidden="true"><span></span></div>
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
         <div class="boot" id="boot" aria-hidden="true">
-          <div class="boot__logo"><span>NOVA</span></div>
+          <div class="boot__logo"><span>NOVA OS</span><i class="launch__star launch__star--a">✦</i><i class="launch__star launch__star--b">✦</i></div>
           <div class="boot__bar"><i></i></div>
           <div class="boot__tag">طريقة جديدة لاستخدام هاتفك</div>
         </div>
@@ -67,42 +82,47 @@
     </header>
 
     <section class="deck__group">
-      <h2>NOVA MOTION — Profile</h2>
+      <h2>NOVA MOTION — ملف الحركة</h2>
       <div class="chips" id="chips-profile"></div>
       <p class="deck__hint" id="profile-note"></p>
     </section>
 
     <section class="deck__group">
-      <h2>Motion Theme</h2>
+      <h2>محور الحركة</h2>
       <div class="chips" id="chips-theme"></div>
       <p class="deck__hint" id="theme-note"></p>
     </section>
 
     <section class="deck__group">
-      <h2>Appearance</h2>
+      <h2>المظهر</h2>
       <div class="chips" id="chips-mode"></div>
       <div class="chips" id="chips-accent"></div>
     </section>
 
     <section class="deck__group">
-      <h2>Install on your phone</h2>
+      <h2>خلفية المساحة</h2>
+      <div class="chips" id="chips-wallpaper"></div>
+      <p class="deck__hint">نفس الاختيارات داخل تطبيق «الإعدادات» على الشاشة — مع صورة من جهازك.</p>
+    </section>
+
+    <section class="deck__group">
+      <h2>التركيب على هاتفك</h2>
       <div class="chips" id="deck-install"></div>
       <p class="deck__hint" id="install-note"></p>
     </section>
 
     <section class="deck__group">
-      <h2>Scenarios</h2>
+      <h2>مشاهد وتجارب</h2>
       <div class="deck__grid" id="deck-actions"></div>
     </section>
 
     <section class="deck__group deck__group--stats">
-      <h2>Live motion telemetry</h2>
+      <h2>قياسات الحركة الحيّة</h2>
       <div class="stats" id="stats"></div>
     </section>
 
     <footer class="deck__foot">
-      <p>Phase 1 prototype · <code>docs/02-motion-language.md</code> is the contract.<br />
-      <a href="docs/06-install.md" style="display:none"></a>Install guide: <code>docs/06-install.md</code></p>
+      <p>NOVA OS · بروتوتايب تفاعلي كامل للتجربة — خلفية، مظهر، حركة، وكل التطبيقات.</p>
     </footer>
   </aside>
 </div>

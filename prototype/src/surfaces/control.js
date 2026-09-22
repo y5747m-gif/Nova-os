@@ -15,6 +15,7 @@ const NODES = [
   { id: 'torch',    label: 'الكشاف',   icon: 'torch',     value: 0,  binary: true,  color: '#f5a524' },
   { id: 'airplane', label: 'طيران',    icon: 'airplane',  value: 0,  binary: true,  color: '#ff6b9a' },
   { id: 'battery',  label: 'موفّر',    icon: 'battery',   value: .6, binary: false, color: '#22d3ee' },
+  { id: 'look',     label: 'المظهر',   icon: 'settings',  value: 1,  binary: true,  instant: true, color: '#a78bfa' },
 ];
 
 const SECTOR = 0.36; // radians of travel per node
@@ -60,6 +61,7 @@ export function mountControl(layer, ctx = {}) {
       engage: 3,
       onStart: () => { node.dataset.active = '1'; entry.startAngle = entry.angle; },
       onMove: (e) => {
+        if (def.instant) return;
         const r = ring.getBoundingClientRect();
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         const ang = Math.atan2(e.clientY - cy, e.clientX - cx);
@@ -75,6 +77,7 @@ export function mountControl(layer, ctx = {}) {
       },
       onEnd: () => {
         delete node.dataset.active;
+        if (entry.def.instant) { entry.layout(); return; }
         if (entry.def.binary) {
           // release decides by position, exactly like a gesture commit
           entry.def.value = entry.def.value > 0.5 ? 1 : 0;
@@ -93,6 +96,12 @@ export function mountControl(layer, ctx = {}) {
     });
 
     node.addEventListener('click', () => {
+      if (def.instant) {
+        // an action node: opens the customization room instead of toggling
+        ctx.emit?.('success');
+        ctx.onCustomize?.();
+        return;
+      }
       if (def.binary) {
         def.value = def.value > 0.5 ? 0 : 1;
         entry.layout();

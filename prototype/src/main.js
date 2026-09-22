@@ -13,6 +13,9 @@ import {
 import {
   isNativeLauncher, launchRealApp,
 } from './core/launcher.js';
+import {
+  initWallpaper, setWallpaper, wallpaperId, WALLPAPERS, onWallpaperChange,
+} from './core/wallpaper.js';
 import { attachGestures, draggable } from './motion/gestures.js';
 import NovaMotion, { rectOf, clamp } from './motion/motion.js';
 import { createFx } from './motion/fx.js';
@@ -39,6 +42,7 @@ import { mountLock } from './surfaces/lock.js';
 import { buildSplit } from './surfaces/split.js';
 import { createDnd } from './surfaces/dnd.js';
 import { mountSetup } from './surfaces/setup.js';
+import { playAppLaunch, canPlayLaunch, popRect } from './surfaces/launch.js';
 
 /* ── element handles ───────────────────────────────────────────── */
 const screen = document.getElementById('screen');
@@ -62,6 +66,8 @@ if (isNativeLauncher()) statusbar.classList.add('status--native');
 
 /* ── wallpaper blobs (Dynamic Space) + the living FX layer ─────── */
 L.wallpaper.append(h('i'), h('i'), h('i'), h('i', { class: 'blob-aurora' }));
+/* restore the saved wallpaper scene (aurora / sunset / صورتي / system …) */
+initWallpaper();
 let fx = null;
 try {
   fx = createFx(document.getElementById('fx'));
@@ -98,6 +104,11 @@ const ui = {
   home: mountHome(L.home, {
     onOpenApp: (appId, el) => openApp(appId, el),
     onTask: () => openPanel('flow'),
+    onAllApps: () => {
+      if (state.surface === 'lock') return;
+      openPanel('core');
+      setTimeout(() => { try { ui.core.showAll(); } catch { /* ignore */ } }, 80);
+    },
   }),
   core: null,
   flow: null,
@@ -180,6 +191,16 @@ ui.control = mountControl(L.panels, {
   emit: (k) => NovaMotion.emit(k),
   onToggle: (def, on) => toast(`${def.label}: ${on ? 'مُشغّل' : 'مُطفأ'}`),
   onValueChange: (def) => { },
+  onCustomize: () => {
+    closePanel(true);
+    if (state.surface === 'lock') {
+      state.surface = 'home';
+      ui.lock.setVisible(false);
+      ui.home.setHidden(false);
+      ui.home.enter();
+    }
+    setTimeout(() => openApp('settings', null), 140);
+  },
 });
 
 ui.flow.el.style.top = '0';
@@ -251,6 +272,7 @@ function rememberWorkspace(appId) {
 /* ── app surface lifecycle ─────────────────────────────────────── */
 let appCtl = null;   // { appId, el, morph, host }
 let returnTo = 'home'; // where Back goes: 'home' or the canvas the app was opened from
+let launchFlight = null; // the in-flight launch bubble (cancelable)
 
 function appCtx(appId, opts) {
   return {
@@ -273,8 +295,34 @@ function openApp(appId, sourceEl, opts = {}) {
   if (state.panel) closePanel(true);
   if (appCtl && appCtl.appId === appId) return;
 
-  returnTo = state.surface === 'canvas' ? 'canvas' : 'home';
-  const from = sourceEl ? rectOf(sourceEl, screen) : rectForApp(appId);
+  const back = state.surface === 'canvas' ? 'canvas' : 'home';
+  const srcRect = sourceEl && sourceEl.getBoundingClientRect ? rectOf(sourceEl, screen) : null;
+
+  // انميشن اختيار التطبيق: the icon becomes a bubble, rises to the
+  // middle of the screen, pops — and the app blooms from the pop point
+  if (canPlayLaunch(sourceEl) && srcRect) {
+    launchFlight?.cancel();
+    launchFlight = playAppLaunch({
+      srcRect,
+      appId,
+      overlay: L.overlay,
+      screen,
+      fx,
+      onPop: () => {
+        launchFlight = null;
+        if (state.surface === 'lock') return;
+        mountAppSurface(appId, popRect(screen), opts, back);
+      },
+    });
+    return;
+  }
+
+  mountAppSurface(appId, srcRect || rectForApp(appId), opts, back);
+}
+
+/* the app surface itself — `from` is where it blooms from */
+function mountAppSurface(appId, from, opts = {}, back = 'home') {
+  returnTo = back;
   const { el, meta } = buildApp(appId, appCtx(appId, opts));
 
   // one host element per surface so the back gesture can translate it
@@ -322,31 +370,37 @@ function openApp(appId, sourceEl, opts = {}) {
   paintCaption();
 }
 
-/* launching a REAL app: the source tile blooms toward the viewer, a spark
-   burst marks the handoff, then Android takes over. NOVA stays home. */
+/* launching a REAL app: the icon lifts off as a bubble, arcs to the
+   middle of the screen and pops in a NOVA spark — then Android takes
+   over. NOVA stays home. */
 function launchNativeApp(pkg, sourceEl) {
   if (state.panel) closePanel(true);
+  const handOff = () => {
+    rememberWorkspace(pkg);
+    setTimeout(() => {
+      if (!launchRealApp(pkg)) toast('تعذّر فتح التطبيق');
+    }, 120);
+  };
+  const srcRect = sourceEl && sourceEl.getBoundingClientRect ? rectOf(sourceEl, screen) : null;
+  if (canPlayLaunch(sourceEl) && srcRect) {
+    launchFlight?.cancel();
+    launchFlight = playAppLaunch({
+      srcRect,
+      appId: pkg,
+      overlay: L.overlay,
+      screen,
+      fx,
+      onPop: () => { launchFlight = null; handOff(); },
+    });
+    return;
+  }
   NovaMotion.emit('open');
   try {
     const r = sourceEl?.getBoundingClientRect?.();
     const sr = screen.getBoundingClientRect();
     if (r && sr) fx?.burst(r.left - sr.left + r.width / 2, r.top - sr.top + r.height / 2, '', 34);
   } catch { /* ignore */ }
-  if (sourceEl && sourceEl.style) {
-    NovaMotion.spring({
-      from: 0, to: 1, springName: 'SNAP',
-      onUpdate: (v) => {
-        const s = 1 + Math.sin(Math.min(1, v) * Math.PI) * 0.1;
-        sourceEl.style.transform = `scale(${s.toFixed(3)})`;
-        sourceEl.style.filter = v > 0.05 && v < 0.95 ? 'brightness(1.35)' : '';
-      },
-      onDone: () => { sourceEl.style.transform = ''; sourceEl.style.filter = ''; },
-    });
-  }
-  rememberWorkspace(pkg);
-  setTimeout(() => {
-    if (!launchRealApp(pkg)) toast('تعذّر فتح التطبيق');
-  }, 120);
+  handOff();
 }
 
 function finishApp(dir = 'home') {
@@ -874,6 +928,7 @@ const deckActions = [
   ['flow', 'FLOW'],
   ['core', 'CORE'],
   ['control', 'CONTROL'],
+  ['settings', 'الإعدادات'],
   ['widgets', 'الودجات'],
   ['resume', 'استرجاع مساحة'],
   ['power', 'زر الطاقة'],
@@ -899,8 +954,8 @@ function buildInstallDeck() {
   const note = document.getElementById('install-note');
   if (note) {
     note.innerHTML = isStandalone()
-      ? `شغّال كتطبيق مثبّت · <code>v${NOVA_VERSION}</code>`
-      : `افتح «تحميل على الهاتف» للتثبيت كتطبيق أو تنزيل الـAPK · <code>v${NOVA_VERSION}</code>`;
+      ? `شغّال كتطبيق مثبّت · <b class="deck__ver">v${NOVA_VERSION}</b>`
+      : `افتح «تحميل على الهاتف» للتثبيت كتطبيق أو تنزيل الـAPK · <b class="deck__ver">v${NOVA_VERSION}</b>`;
   }
 }
 
@@ -939,6 +994,18 @@ function refreshDeck() {
   chipRow('chips-mode', { dark: { label: 'NOVA Dark' }, light: { label: 'NOVA Paper' } }, 'mode', setMode);
   chipRow('chips-accent', ACCENTS, 'accent', setAccent);
 
+  /* wallpaper scenes — the same picker lives inside تطبيق الإعدادات */
+  const wallRow = document.getElementById('chips-wallpaper');
+  if (wallRow) {
+    wallRow.replaceChildren(...Object.entries(WALLPAPERS)
+      .filter(([, w]) => !w.native || isNativeLauncher())
+      .map(([id, w]) => h('button', {
+        class: 'chip',
+        'aria-pressed': String(wallpaperId() === id),
+        onclick: () => { setWallpaper(id); },
+      }, w.label)));
+  }
+
   document.getElementById('profile-note').textContent = PROFILES[nova.profile].note;
   document.getElementById('theme-note').textContent = THEMES[nova.theme].note;
 }
@@ -946,16 +1013,15 @@ function refreshDeck() {
 const uiStats = document.getElementById('stats');
 setInterval(() => {
   if (!uiStats) return;
-  const settle = springConfig('theme');
   uiStats.innerHTML = `
-    <div class="stat"><b>${stats.fps}</b><span>FPS</span></div>
-    <div class="stat"><b>${stats.active}</b><span>ANIMATIONS</span></div>
-    <div class="stat"><b>${stats.worstFrame.toFixed(1)}ms</b><span>WORST FRAME</span></div>
-    <div class="stat"><b>${Math.round(currentOvershoot() * 100)}%</b><span>OVERSHOOT</span></div>
-    <div class="stat"><b>${blurPx()}px</b><span>BLUR BUDGET</span></div>
-    <div class="stat"><b>${Math.round(hapticBudgetLeft())}</b><span>HAPTIC BUDGET</span></div>
-    <div class="stat"><b>${token('NORMAL')}ms</b><span>NORMAL TOKEN</span></div>
-    <div class="stat"><b>${stats.frameCount}</b><span>FRAMES</span></div>`;
+    <div class="stat"><b>${stats.fps}</b><span>إطار/ث</span></div>
+    <div class="stat"><b>${stats.active}</b><span>حركات نشطة</span></div>
+    <div class="stat"><b>${stats.worstFrame.toFixed(1)}ms</b><span>أبطأ إطار</span></div>
+    <div class="stat"><b>${Math.round(currentOvershoot() * 100)}%</b><span>تجاوز الربيع</span></div>
+    <div class="stat"><b>${blurPx()}px</b><span>ميزانية التمويه</span></div>
+    <div class="stat"><b>${Math.round(hapticBudgetLeft())}</b><span>ميزانية الاهتزاز</span></div>
+    <div class="stat"><b>${token('NORMAL')}ms</b><span>وحدة الزمن</span></div>
+    <div class="stat"><b>${stats.frameCount}</b><span>إجمالي الإطارات</span></div>`;
 }, 600);
 
 function runAction(id) {
@@ -1030,6 +1096,16 @@ function runAction(id) {
       break;
     case 'sweep': showCanvas(); setTimeout(() => ui.canvas.sweep(), 320); break;
     case 'install': ui.install.isOpen ? ui.install.close() : ui.install.open(); break;
+    case 'settings': case 'customize':
+      if (state.surface === 'lock') {
+        state.surface = 'home';
+        ui.lock.setVisible(false);
+        ui.home.setHidden(false);
+        ui.home.enter();
+      }
+      closePanel(true);
+      openApp('settings', null);
+      break;
     default: break;
   }
 }
@@ -1037,7 +1113,7 @@ function runAction(id) {
 /* ── keyboard shortcuts (desktop) ──────────────────────────────── */
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
-  const map = { k: 'core', f: 'flow', c: 'canvas', e: 'event', m: 'media', p: 'power', l: 'lock', s: 'sweep', r: 'resume', i: 'install' };
+  const map = { k: 'core', f: 'flow', c: 'canvas', e: 'event', m: 'media', p: 'power', l: 'lock', s: 'sweep', r: 'resume', i: 'install', w: 'settings' };
   const action = map[e.key.toLowerCase()];
   if (action) { e.preventDefault(); runAction(action); }
   if (e.key === 'Escape') NovaBack();
@@ -1045,6 +1121,39 @@ window.addEventListener('keydown', (e) => {
 
 /* ── boot ──────────────────────────────────────────────────────── */
 onConfigChange(() => { refreshDeck(); });
+onWallpaperChange(() => { refreshDeck(); });
+
+/* the install sheet can be summoned from داخل الإعدادات too */
+window.addEventListener('nova:open-install', () => {
+  try { ui.install.open(); } catch { /* ignore */ }
+});
+
+/* long-press the open space of Dynamic Space → customize (الإعدادات) */
+try {
+  let pressTimer = null;
+  let sx = 0;
+  let sy = 0;
+  const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
+  L.home.addEventListener('pointerdown', (e) => {
+    if (state.surface !== 'home' || state.panel || appCtl) return;
+    if (e.target?.closest?.('button, input, .app-card, .orb-item, .home__task, .home__banner')) return;
+    sx = e.clientX; sy = e.clientY;
+    cancelPress();
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      if (state.surface === 'home' && !state.panel && !appCtl) {
+        NovaMotion.emit('open');
+        openApp('settings', null);
+        toast('خصّص مساحتك: الخلفية · المظهر · الحركة');
+      }
+    }, 550);
+  });
+  L.home.addEventListener('pointermove', (e) => {
+    if (pressTimer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancelPress();
+  });
+  L.home.addEventListener('pointerup', cancelPress);
+  L.home.addEventListener('pointercancel', cancelPress);
+} catch { /* ignore */ }
 
 buildDeck();
 state.surface = 'lock';
@@ -1261,5 +1370,6 @@ window.NOVA = {
   state, ui, openApp, openPanel, closePanel, showCanvas, runAction, toast, NovaMotion,
   version: NOVA_VERSION, install: ui.install, setup: ui.setup, fx,
   checkForUpdate, applyUpdate, isStandalone,
+  wallpaper: { set: setWallpaper, id: wallpaperId, all: WALLPAPERS },
   back: NovaBack, goHome: window.NovaGoHome,
 };

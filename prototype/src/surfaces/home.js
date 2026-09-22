@@ -1,13 +1,15 @@
 /* ══════════════════════════════════════════════════════════════
    Dynamic Space — the NOVA home surface (docs/01 §2)
    No icon grid: only what matters now. A living clock, a greeting that
-   knows the time of day, the context ring and suggestion cards that are
-   REAL apps inside the APK (usage-ranked) and the demo set in a browser.
+   knows the time of day, and the context RING — كرة التطبيقات — a
+   living orbit that rotates through EVERY app (not a fixed trio), plus
+   suggestion cards that are REAL apps inside the APK (usage-ranked)
+   and the full demo catalogue in a browser. One tap reaches كل التطبيقات.
    ══════════════════════════════════════════════════════════════ */
 
 import { h, fmtDate } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { APPS, appMeta, state } from '../core/store.js';
+import { APPS, appMeta, state, allAppIds } from '../core/store.js';
 import NovaMotion, { clamp } from '../motion/motion.js';
 import { stagger as staggerMs } from '../motion/config.js';
 import {
@@ -15,17 +17,52 @@ import {
   launcherState, requestDefaultLauncher, liveNotifications,
 } from '../core/launcher.js';
 
-const RING = [
-  { appId: 'whatsapp', angle: Math.PI * 1.15 },
-  { appId: 'gallery', angle: Math.PI * 1.5 },
-  { appId: 'music', angle: Math.PI * 1.85 },
-];
+const RING_FALLBACK = ['whatsapp', 'gallery', 'music'];
+
+/** Rotation cursor — the ring walks through the whole universe. */
+let ringShift = 0;
+let cardShift = 0;
+
+/** Universe = every app there is (demo catalogue or the real phone). */
+function universeIds() {
+  if (isNativeLauncher()) return realApps().map((a) => a.p);
+  return allAppIds();
+}
+
+function rotateFrom(list, shift, count) {
+  const out = [];
+  if (!list.length) return out;
+  const start = ((shift % list.length) + list.length) % list.length;
+  for (let i = 0; i < list.length && out.length < count; i++) out.push(list[(start + i) % list.length]);
+  return out;
+}
+
+/**
+ * كرة التطبيقات — up to 5 apps: recent memory first, then a rotating
+ * window over EVERY installed app so the ring is never static and, over
+ * time, shows everything the phone can do.
+ */
+function ringIds() {
+  const ids = [];
+  const add = (id) => { if (id && !ids.includes(id)) ids.push(id); };
+  for (const id of (state.lastWorkspace || []).slice(0, 2)) add(id);
+  if (isNativeLauncher()) for (const p of topRealApps(8)) add(p);
+  for (const id of rotateFrom(universeIds(), ringShift, 5)) add(id);
+  if (ids.length < 3) for (const id of RING_FALLBACK) add(id);
+  return ids.slice(0, 5);
+}
+
+/** Dynamic angular spread across the upper semicircle (CSS-y is down). */
+function ringAngle(i, n) {
+  if (n <= 1) return Math.PI * 1.5;
+  return Math.PI + (i + 0.5) * (Math.PI / n);
+}
+const RING_RADIUS = 68;
 
 function demoSuggestions() {
-  const hr = new Date().getHours();
-  if (hr < 11) return ['notes', 'maps', 'whatsapp', 'browser'];
-  if (hr < 17) return ['whatsapp', 'gallery', 'browser', 'notes'];
-  return ['music', 'browser', 'whatsapp', 'gallery'];
+  const uni = universeIds();
+  if (uni.length) return rotateFrom(uni, cardShift, 4);
+  return ['notes', 'maps', 'whatsapp', 'browser'];
 }
 
 /** The four cards that matter right now — real packages in the APK. */
@@ -42,18 +79,6 @@ function suggestions() {
     if (ids.length) return ids.slice(0, 4);
   }
   return demoSuggestions();
-}
-
-function ringIds() {
-  if (state.lastWorkspace?.length) return state.lastWorkspace.slice(0, 3);
-  if (isNativeLauncher()) {
-    const top = topRealApps(6);
-    if (top.length >= 3) return top.slice(0, 3);
-    const all = realApps().map((a) => a.p);
-    if (all.length >= 3) return all.slice(0, 3);
-    if (all.length) return all;
-  }
-  return RING.map((r) => r.appId);
 }
 
 function metaFor(id) {
@@ -129,18 +154,29 @@ export function mountHome(layer, ctx = {}) {
   const ringLine = h('div', { class: 'ring-line' });
   const ring = h('div', { class: 'home__ring' }, ringLine);
 
+  /* كرة التطبيقات title + the one-tap door to كل التطبيقات */
+  const allBtn = h('button', {
+    class: 'home__all',
+    onclick: (e) => { ripple(e); ctx.onAllApps?.(); },
+  }, h('span', {}, 'كل التطبيقات'), h('span', { html: icon('apps', 'ico ico--sm') }));
+  const ringTitle = h('div', { class: 'home__title-row' },
+    h('div', { class: 'home__section-title' }, 'كرة التطبيقات'),
+    allBtn,
+  );
+
   const cards = h('div', { class: 'home__cards' });
 
   const root = h('div', { class: 'home' },
     greet,
     task,
     banner,
-    h('div', { class: 'home__section-title' }, isNativeLauncher() ? 'مقترح لك الآن' : 'المساحة الحالية'),
+    ringTitle,
     ring,
+    h('div', { class: 'home__section-title' }, isNativeLauncher() ? 'مقترح لك الآن' : 'مقترح لك من كل التطبيقات'),
     cards,
     h('div', { class: 'home__foot' },
       h('div', { class: 'home__pill' }),
-      h('small', {}, 'اسحب للأعلى · NOVA CORE'),
+      h('small', {}, 'اسحب للأعلى · NOVA CORE · اضغط مطولاً للتخصيص'),
     ),
   );
 
@@ -156,6 +192,17 @@ export function mountHome(layer, ctx = {}) {
       if (h2) h2.textContent = greeting();
       paintLive();
     }, 15000);
+    /* the ring is ALIVE: every 9 seconds it turns, and every app on the
+       phone eventually orbits through — never a fixed, static trio */
+    setInterval(() => {
+      if (!root.isConnected || root.dataset.hidden === '1') return;
+      ringShift += 2;
+      cardShift += 4;
+      buildRing();
+      buildCards();
+      animateRing('commit', 700);
+      animateCards();
+    }, 9000);
     window.addEventListener('nova:launcher', paintLive);
     window.addEventListener('nova:live', paintLive);
   } catch { /* ignore */ }
@@ -222,7 +269,7 @@ export function mountHome(layer, ctx = {}) {
     void elm;
   }
 
-  /* ── context ring ─────────────────────────────────────────── */
+  /* ── كرة التطبيقات — the living context ring ─────────────── */
 
   function buildRing() {
     for (const el of orbEls.values()) el.remove();
@@ -242,26 +289,27 @@ export function mountHome(layer, ctx = {}) {
       el.style.color = meta.color;
       ring.append(el);
       orbEls.set(appId, el);
-      const a = RING[i % RING.length].angle;
-      el.style.transform = `translate3d(${(Math.cos(a) * 58).toFixed(1)}px, ${(Math.sin(a) * 58).toFixed(1)}px, 0)`;
+      const a = ringAngle(i, ids.length);
+      el.style.transform = `translate3d(${(Math.cos(a) * RING_RADIUS).toFixed(1)}px, ${(Math.sin(a) * RING_RADIUS).toFixed(1)}px, 0)`;
     });
   }
 
-  function animateRing() {
+  function animateRing(dir = 'commit', velocity = 900) {
     const ids = ringIds();
     const items = ids.map((id) => orbEls.get(id)).filter(Boolean);
+    const n = items.length;
     const orb = NovaMotion.orbital({
       items,
       center: { x: 0, y: 0 },
-      radius: 58,
+      radius: RING_RADIUS,
       stagger: staggerMs(70),
-      angleOf: (_item, i) => RING[i % RING.length].angle,
+      angleOf: (_item, i) => ringAngle(i, n),
       onUpdate: (el, _i, s) => {
         el.style.transform = `translate3d(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px, 0) scale(${s.scale.toFixed(3)})`;
         el.style.opacity = s.alpha.toFixed(2);
       },
     });
-    orb.release('commit', 900);
+    orb.release(dir, velocity);
   }
 
   /* ── suggestion cards ─────────────────────────────────────── */
@@ -319,6 +367,9 @@ export function mountHome(layer, ctx = {}) {
   }
 
   function enter() {
+    // every visit turns the ring a little — the space is never the same
+    ringShift += 1;
+    cardShift += 1;
     refresh();
     animateRing();
     animateCards();
