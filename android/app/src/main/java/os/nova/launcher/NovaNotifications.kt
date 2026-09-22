@@ -27,7 +27,9 @@ class NovaNotificationService : NotificationListenerService() {
         if (instance === this) instance = null
         // the system rebinds us; ask for it explicitly on older releases
         try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) requestRebind(ComponentName(this, javaClass))
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                NotificationListenerService.requestRebind(ComponentName(this, javaClass))
+            }
         } catch (_: Exception) { }
     }
 
@@ -69,9 +71,11 @@ class NovaNotificationService : NotificationListenerService() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 // hint the exact component on Android 8–13 settings screens
+                // (Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME as a literal:
+                // the constant is not public on every compile SDK)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     intent.putExtra(
-                        Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                        "android.provider.extra.NOTIFICATION_LISTENER_COMPONENT_NAME",
                         ComponentName(ctx, NovaNotificationService::class.java).flattenToString(),
                     )
                 }

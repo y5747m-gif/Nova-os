@@ -57,7 +57,7 @@ object NovaWidgets {
         try {
             val mgr = manager(ctx) ?: return arr.toString()
             val pm = ctx.packageManager
-            for (info in mgr.installedProviders.sortedBy { it.loadLabel(pm) }) {
+            for (info in mgr.installedProviders.sortedBy { it.loadLabel(pm).toString().lowercase() }) {
                 arr.put(
                     JSONObject()
                         .put("label", info.loadLabel(pm))
