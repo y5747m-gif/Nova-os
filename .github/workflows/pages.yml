@@ -33,6 +33,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # Self-heal: a Pages site built by Actions must exist before anything can
+      # deploy to it. Creating it needs exactly the permissions this workflow
+      # already carries (pages: write), so the pipeline bootstraps itself —
+      # no one has to remember a settings page.
+      - name: Ensure GitHub Pages exists (self-heal)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/pages" --silent 2>/dev/null; then
+            echo "Pages site already configured"
+          else
+            echo "no Pages site yet — creating it with GitHub Actions as the source"
+            gh api -X POST "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow
+          fi
+
       - name: Node
         uses: actions/setup-node@v4
         with:
