@@ -83,6 +83,28 @@ export function realAppIcon(pkg) {
   return uri;
 }
 
+/**
+ * Fill the icon cache for a whole screenful of apps in ONE bridge
+ * crossing (NovaSystem.iconsFor) — a drawer of 200 apps paints in
+ * waves instead of blocking the JS thread tile by tile. Browsers
+ * without the batch method fall back to per-app calls.
+ */
+export function realIconsBatch(pkgs) {
+  const need = (pkgs || []).filter((p) => p && !iconCache.has(p));
+  if (!need.length) return;
+  try {
+    if (isNativeLauncher() && typeof bridge().iconsFor === 'function') {
+      const map = safeJson(bridge().iconsFor(JSON.stringify(need.slice(0, 36))), {});
+      for (const [k, v] of Object.entries(map || {})) {
+        if (iconCache.size > 600) iconCache.clear();
+        iconCache.set(k, v || '');
+      }
+      return;
+    }
+    for (const p of need.slice(0, 12)) realAppIcon(p);
+  } catch { /* icons stay fallback letters */ }
+}
+
 export function launchRealApp(pkg) {
   try {
     return isNativeLauncher() ? !!bridge().launchApp(pkg) : false;

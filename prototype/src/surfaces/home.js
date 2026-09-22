@@ -10,7 +10,10 @@ import { icon } from '../core/icons.js';
 import { APPS, appMeta, state } from '../core/store.js';
 import NovaMotion, { clamp } from '../motion/motion.js';
 import { stagger as staggerMs } from '../motion/config.js';
-import { isNativeLauncher, realApps, realAppIcon, realAppLabel, topRealApps } from '../core/launcher.js';
+import {
+  isNativeLauncher, realApps, realAppIcon, realAppLabel, topRealApps,
+  launcherState, requestDefaultLauncher, liveNotifications,
+} from '../core/launcher.js';
 
 const RING = [
   { appId: 'whatsapp', angle: Math.PI * 1.15 },
@@ -68,6 +71,15 @@ function greeting() {
   return 'مساء هادئ';
 }
 
+/* the real state of NOVA FLOW — the phone's actual live events */
+function flowSummary() {
+  try {
+    const n = liveNotifications().length;
+    if (n) return `${n} ${n === 1 ? 'حدث جديد بانتظارك' : 'أحداث جديدة بانتظارك'}`;
+  } catch { /* ignore */ }
+  return 'كل شيء هادئ — لا أحداث الآن';
+}
+
 function clockText(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
@@ -80,20 +92,38 @@ export function mountHome(layer, ctx = {}) {
   const clockEl = h('div', { class: 'home__clock' }, clockText());
   const greet = h('div', { class: 'home__greet' },
     clockEl,
-    h('h2', {}, `${greeting()}، ياسين`),
+    h('h2', { id: 'home-greet' }, greeting()),
     h('p', { id: 'home-date' }, fmtDate()),
   );
 
+  /* the FLOW card mirrors the phone's REAL events inside the APK */
+  const native = isNativeLauncher();
+  const taskSub = h('span', {}, native ? flowSummary() : 'اجتماع الفريق — 25 دقيقة');
+  const taskBadge = h('span', { class: 'badge' }, native ? String(liveNotifications().length || 'هادئ') : 'قريبًا');
   const task = h('button', {
     class: 'card home__task',
     onclick: (e) => { ripple(e); ctx.onTask?.(); },
   },
     h('span', { html: icon('actions', 'ico') }),
     h('span', { class: 't' },
-      h('b', {}, 'المهمة القادمة'),
-      h('span', {}, 'اجتماع الفريق — 25 دقيقة'),
+      h('b', {}, native ? 'NOVA FLOW' : 'المهمة القادمة'),
+      taskSub,
     ),
-    h('span', { class: 'badge' }, 'قريبًا'),
+    taskBadge,
+  );
+
+  /* one-tap path to becoming the phone's actual home — the chip that
+     turns "an app you opened" into "the interface the phone boots to" */
+  const banner = h('button', {
+    class: 'home__banner hidden',
+    onclick: (e) => { ripple(e); requestDefaultLauncher(); ctx.toast?.('اختر NOVA من قائمة النظام'); },
+  },
+    h('span', { class: 'home__banner-ico', html: icon('layers', 'ico') }),
+    h('span', { class: 't' },
+      h('b', {}, 'اجعل NOVA واجهتك الأساسية'),
+      h('span', {}, 'اضغط لتعيينها الشاشة الرئيسية الافتراضية — زر الهوم يفتحها دائمًا'),
+    ),
+    h('span', { class: 'go', html: icon('chevron', 'ico ico--sm') }),
   );
 
   const ringLine = h('div', { class: 'ring-line' });
@@ -104,6 +134,7 @@ export function mountHome(layer, ctx = {}) {
   const root = h('div', { class: 'home' },
     greet,
     task,
+    banner,
     h('div', { class: 'home__section-title' }, isNativeLauncher() ? 'مقترح لك الآن' : 'المساحة الحالية'),
     ring,
     cards,
@@ -115,16 +146,30 @@ export function mountHome(layer, ctx = {}) {
 
   layer.append(root);
 
-  /* live clock */
+  /* live clock + the real state of the interface */
   try {
     setInterval(() => {
       clockEl.textContent = clockText();
       const d = root.querySelector('#home-date');
       if (d) d.textContent = fmtDate();
       const h2 = greet.querySelector('h2');
-      if (h2) h2.textContent = `${greeting()}، ياسين`;
+      if (h2) h2.textContent = greeting();
+      paintLive();
     }, 15000);
+    window.addEventListener('nova:launcher', paintLive);
+    window.addEventListener('nova:live', paintLive);
   } catch { /* ignore */ }
+
+  /* FLOW card + default-home chip reflect reality on every visit */
+  function paintLive() {
+    try {
+      taskSub.textContent = native ? flowSummary() : taskSub.textContent;
+      const n = native ? liveNotifications().length : 0;
+      if (native) taskBadge.textContent = n ? String(n) : 'هادئ';
+      const s = native ? launcherState() : null;
+      banner.classList.toggle('hidden', !(s && !s.def));
+    } catch { /* ignore */ }
+  }
 
   /* tap ripple — pure CSS keyframes, cleaned on animation end */
   function ripple(e) {
@@ -281,6 +326,7 @@ export function mountHome(layer, ctx = {}) {
 
   buildRing();
   buildCards();
+  paintLive();
 
   return {
     root,

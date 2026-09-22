@@ -19,7 +19,8 @@ const STEPS = ['welcome', 'home', 'notif', 'smart', 'walls', 'done'];
 export function mountSetup(layer, ctx = {}) {
   let stepIx = 0;
   let opened = false;
-  let status = { def: false, notif: false, usage: false, setup: false };
+  let poll = null;
+  let status = { def: false, notif: false, usage: false, post: false, contacts: false, setup: false };
 
   const dots = h('div', { class: 'setup__dots' });
   const body = h('div', { class: 'setup__body' });
@@ -63,6 +64,16 @@ export function mountSetup(layer, ctx = {}) {
 
   function badge(ok) {
     return h('span', { class: ok ? 'setup__badge setup__badge--on' : 'setup__badge' }, ok ? '✓ مفعّل' : 'مطلوب');
+  }
+
+  /* one button per permission — the system screens never fight each
+     other, and the badge flips to ✓ the moment the grant lands */
+  function rowAction(label, fn, done) {
+    if (done) return h('span', { class: 'setup__rowbtn setup__rowbtn--done' }, '✓ تم');
+    return h('button', {
+      class: 'setup__rowbtn',
+      onclick: (e) => { e.stopPropagation(); ctx.emit?.('tick'); fn?.(); },
+    }, label);
   }
 
   function paintStep(instant = false) {
@@ -226,9 +237,14 @@ export function mountSetup(layer, ctx = {}) {
     c.release('commit', 800);
   }
 
+  function stopPolling() {
+    if (poll) { clearInterval(poll); poll = null; }
+  }
+
   function close() {
     if (!opened) return;
     opened = false;
+    stopPolling();
     el.classList.add('hidden');
     ctx.emit?.('close');
   }

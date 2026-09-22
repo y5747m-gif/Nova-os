@@ -125,22 +125,38 @@ body[data-mode="light"] .home__clock {
 .core__result-img {
   width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
 }
+/* the popup wrapper owns placement (JS sets left/top on the PANEL,
+   outside every clipping tile/scroll area); the card owns the motion */
 .core__pop {
-  position: absolute; bottom: calc(100% + 10px); inset-inline-start: 50%;
-  transform: translateX(50%);
-  min-width: 190px; max-width: 230px;
+  position: absolute;
+  transform: translate(-50%, 0);
+  z-index: 90;
+}
+.core__pop-card {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 212px; max-width: 252px;
   padding: 10px; border-radius: 18px;
   background: var(--nv-elevated);
   border: 1px solid var(--nv-line-strong);
   box-shadow: var(--nv-shadow-panel);
-  z-index: 60;
-  display: flex; flex-direction: column; gap: 4px;
+  transform-origin: top center;
 }
-.core__pop-title { font-size: 12px; padding: 4px 8px 8px; color: var(--nv-text-2); }
+.core__pop-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 4px 8px 8px;
+}
+.core__pop-img {
+  width: 30px; height: 30px; border-radius: 9px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+  flex: 0 0 auto;
+}
+.core__pop-title { font-size: 13px; font-weight: 600; }
+.core__pop-sico { width: 20px; height: 20px; border-radius: 6px; flex: 0 0 auto; }
 .core__pop-item {
   display: flex; align-items: center; gap: 9px;
   padding: 9px 10px; border-radius: 12px; font-size: 12.5px;
   color: var(--nv-text);
+  text-align: start;
 }
 .core__pop-item:active { background: color-mix(in srgb, var(--nv-text) 8%, transparent); }
 .core__pop-item--danger { color: var(--nv-coral); }
@@ -255,6 +271,21 @@ body[data-mode="light"] .home__clock {
 }
 .setup__badge--on {
   background: color-mix(in srgb, var(--nv-mint) 18%, transparent);
+  color: var(--nv-mint);
+}
+/* one explicit grant button per permission row */
+.setup__rowbtn {
+  margin-inline-start: auto; flex: 0 0 auto;
+  padding: 7px 13px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700;
+  background: color-mix(in srgb, var(--nv-accent) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nv-accent) 42%, transparent);
+  color: var(--nv-text);
+}
+.setup__rowbtn:active { filter: brightness(1.15); }
+.setup__rowbtn--done {
+  background: color-mix(in srgb, var(--nv-mint) 18%, transparent);
+  border-color: color-mix(in srgb, var(--nv-mint) 36%, transparent);
   color: var(--nv-mint);
 }
 .setup__foot { display: flex; flex-direction: column; gap: 8px; }
