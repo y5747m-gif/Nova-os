@@ -7,7 +7,7 @@
    NOVA_VERSION must match src/core/version.js and /VERSION.
    ══════════════════════════════════════════════════════════════ */
 
-const NOVA_VERSION = '0.6.0';
+const NOVA_VERSION = '0.6.1';
 const CACHE = `nova-shell-${NOVA_VERSION}`;
 
 const SHELL = [

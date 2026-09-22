@@ -142,6 +142,8 @@ check('boot: NOVA global exists', !!N);
 check('boot: lock surface', N.state.surface === 'lock', N.state.surface);
 check('boot: events seeded', N.state.events.length >= 2, String(N.state.events.length));
 check('boot: deck chips rendered', window.document.querySelectorAll('#chips-profile .chip').length === 4);
+check('the tool shows no raw codes or paths', !window.document.querySelector('#deck code, .screen code')
+  && !(window.document.getElementById('deck')?.textContent || '').includes('docs/'));
 
 /* ── unlock via a real pointer drag ─────────────────────────── */
 function pointer(type, x, y) {
@@ -316,7 +318,9 @@ await new Promise((r) => setTimeout(r, 400));
 const sheet = window.document.querySelector('.install-sheet');
 check('install sheet opens', !!sheet);
 check('install sheet offers PWA + APK', !!window.document.querySelector('#install-pwa') && !!window.document.querySelector('#install-apk'));
-check('install sheet explains the APK', (sheet?.textContent || '').includes('APK'));
+  check('install sheet explains the APK', (sheet?.textContent || '').includes('APK'));
+  check('install sheet hides raw codes', !document.querySelector('.install-sheet code')
+    && !(sheet?.textContent || '').includes('docs/'));
 check('NovaBack closes the sheet first', N.back() === true && !window.document.querySelector('.install-sheet'));
 
 /* NovaBack must walk the surface stack down to home, then stop */

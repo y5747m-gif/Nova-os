@@ -954,8 +954,8 @@ function buildInstallDeck() {
   const note = document.getElementById('install-note');
   if (note) {
     note.innerHTML = isStandalone()
-      ? `شغّال كتطبيق مثبّت · <code>v${NOVA_VERSION}</code>`
-      : `افتح «تحميل على الهاتف» للتثبيت كتطبيق أو تنزيل الـAPK · <code>v${NOVA_VERSION}</code>`;
+      ? `شغّال كتطبيق مثبّت · <b class="deck__ver">v${NOVA_VERSION}</b>`
+      : `افتح «تحميل على الهاتف» للتثبيت كتطبيق أو تنزيل الـAPK · <b class="deck__ver">v${NOVA_VERSION}</b>`;
   }
 }
 
@@ -1013,16 +1013,15 @@ function refreshDeck() {
 const uiStats = document.getElementById('stats');
 setInterval(() => {
   if (!uiStats) return;
-  const settle = springConfig('theme');
   uiStats.innerHTML = `
-    <div class="stat"><b>${stats.fps}</b><span>FPS</span></div>
-    <div class="stat"><b>${stats.active}</b><span>ANIMATIONS</span></div>
-    <div class="stat"><b>${stats.worstFrame.toFixed(1)}ms</b><span>WORST FRAME</span></div>
-    <div class="stat"><b>${Math.round(currentOvershoot() * 100)}%</b><span>OVERSHOOT</span></div>
-    <div class="stat"><b>${blurPx()}px</b><span>BLUR BUDGET</span></div>
-    <div class="stat"><b>${Math.round(hapticBudgetLeft())}</b><span>HAPTIC BUDGET</span></div>
-    <div class="stat"><b>${token('NORMAL')}ms</b><span>NORMAL TOKEN</span></div>
-    <div class="stat"><b>${stats.frameCount}</b><span>FRAMES</span></div>`;
+    <div class="stat"><b>${stats.fps}</b><span>إطار/ث</span></div>
+    <div class="stat"><b>${stats.active}</b><span>حركات نشطة</span></div>
+    <div class="stat"><b>${stats.worstFrame.toFixed(1)}ms</b><span>أبطأ إطار</span></div>
+    <div class="stat"><b>${Math.round(currentOvershoot() * 100)}%</b><span>تجاوز الربيع</span></div>
+    <div class="stat"><b>${blurPx()}px</b><span>ميزانية التمويه</span></div>
+    <div class="stat"><b>${Math.round(hapticBudgetLeft())}</b><span>ميزانية الاهتزاز</span></div>
+    <div class="stat"><b>${token('NORMAL')}ms</b><span>وحدة الزمن</span></div>
+    <div class="stat"><b>${stats.frameCount}</b><span>إجمالي الإطارات</span></div>`;
 }, 600);
 
 function runAction(id) {

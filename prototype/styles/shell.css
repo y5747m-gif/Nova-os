@@ -199,11 +199,19 @@ body[data-mode="light"] .deck {
 
 .deck__group { display: flex; flex-direction: column; gap: 10px; }
 .deck__group h2 {
-  margin: 0; font-size: 11px; font-weight: 700;
-  letter-spacing: 1.4px; text-transform: uppercase;
+  margin: 0; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .2px;
   color: var(--nv-text-2);
 }
 .deck__hint { margin: 0; font-size: 11.5px; line-height: 1.8; color: var(--nv-text-2); min-height: 20px; }
+.deck__ver {
+  display: inline-block;
+  padding: 2px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--nv-accent) 18%, transparent);
+  color: color-mix(in srgb, var(--nv-accent) 72%, var(--nv-text));
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px;
+  font-variant-numeric: tabular-nums;
+}
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
@@ -242,7 +250,7 @@ body[data-mode="light"] .chip { background: rgba(17, 19, 24, .04); border-color:
 }
 body[data-mode="light"] .stat { background: rgba(17, 19, 24, .035); border-color: rgba(17, 19, 24, .07); }
 .stat b { font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .3px; }
-.stat span { color: var(--nv-text-2); font-size: 10.5px; letter-spacing: .3px; }
+.stat span { color: var(--nv-text-2); font-size: 10.5px; letter-spacing: 0; }
 .stat[data-warn="1"] b { color: var(--nv-amber); }
 
 .deck__foot { border-top: 1px solid rgba(255, 255, 255, .07); padding-top: 12px; }
