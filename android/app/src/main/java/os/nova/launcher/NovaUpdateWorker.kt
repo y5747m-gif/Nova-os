@@ -17,13 +17,16 @@ class NovaUpdateWorker(appContext: Context, params: WorkerParameters) :
     override fun doWork(): Result {
         val release = NovaUpdater.latestApk() ?: return Result.success()
         if (!NovaUpdater.isNewer(release)) return Result.success()
-        if (NovaPrefs.seenUpdate(applicationContext) == release.tag) return Result.success()
+        // dedupe on the VERSION, never the tag (the tag is always «apk-latest»,
+        // so keying on it muted every notification after the first one ever)
+        val version = NovaUpdater.versionOf(release)
+        if (NovaPrefs.seenUpdate(applicationContext) == version) return Result.success()
 
-        NovaPrefs.setSeenUpdate(applicationContext, release.tag)
+        NovaPrefs.setSeenUpdate(applicationContext, version)
         NovaNotify.show(
             applicationContext,
             applicationContext.getString(R.string.notif_update_title),
-            "${applicationContext.getString(R.string.notif_update_text)} (${release.tag})",
+            "${applicationContext.getString(R.string.notif_update_text)} (v$version)",
             channel = NovaNotify.CHANNEL_SYSTEM,
             id = NovaInstaller.UPDATE_NOTIFICATION_ID,
         )
