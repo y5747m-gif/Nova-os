@@ -1,0 +1,66 @@
+name: Deploy NOVA OS site
+
+# Publishes the interactive prototype (prototype/) as the GitHub Pages site —
+# this is the live NOVA URL the PWA installs from (docs/06-install.md §1).
+# Without this workflow the site has nothing to serve and the URL answers 404.
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'      # work-in-progress branches publish the same way the APK flow does
+    paths:
+      - 'prototype/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false   # never interrupt a deployment in flight
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install tooling
+        run: npm ci
+
+      # the same contract the APK flow enforces — broken prototypes never deploy
+      - name: Quality gates
+        run: npm run check
+
+      # the prototype is zero-build: its directory *is* the site.
+      # All paths inside are relative, so the project URL /Nova-os/ just works.
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: prototype
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
