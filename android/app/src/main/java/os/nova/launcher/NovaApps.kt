@@ -32,7 +32,7 @@ object NovaApps {
 
     private const val ICON_PX = 144
 
-    private data class Entry(
+    data class Entry(
         val packageName: String,
         val label: String,
         val component: String,
@@ -136,14 +136,16 @@ object NovaApps {
 
     /* ── actions ─────────────────────────────────────────────── */
 
-    fun launch(ctx: Context, packageName: String): Boolean = try {
-        val pm = ctx.packageManager
-        val intent = pm.getLaunchIntentForPackage(packageName)?.apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-        } ?: return false
-        ctx.startActivity(intent)
-        true
-    } catch (_: Exception) { false }
+    fun launch(ctx: Context, packageName: String): Boolean {
+        return try {
+            val pm = ctx.packageManager
+            val intent = pm.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            } ?: return false
+            ctx.startActivity(intent)
+            true
+        } catch (_: Exception) { false }
+    }
 
     fun openInfo(ctx: Context, packageName: String): Boolean = try {
         ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
