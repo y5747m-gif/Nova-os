@@ -34,19 +34,27 @@ jobs:
         uses: actions/checkout@v5
 
       # Self-heal: a Pages site built by Actions must exist before anything can
-      # deploy to it. Creating it needs exactly the permissions this workflow
-      # already carries (pages: write), so the pipeline bootstraps itself —
-      # no one has to remember a settings page.
+      # deploy to it. Try to create it with the permissions this workflow
+      # carries (pages: write) — and if GitHub refuses (site creation needs a
+      # repo admin), fail loudly with the exact one-time fix instead of
+      # letting the deploy die with a cryptic 404.
       - name: Ensure GitHub Pages exists (self-heal)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh api "repos/$GITHUB_REPOSITORY/pages" --silent 2>/dev/null; then
+          if gh api "repos/$GITHUB_REPOSITORY/pages" >/dev/null 2>&1; then
             echo "Pages site already configured"
-          else
-            echo "no Pages site yet — creating it with GitHub Actions as the source"
-            gh api -X POST "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow
+            exit 0
           fi
+          echo "no Pages site yet — trying to create it (GitHub Actions as the source)"
+          if gh api -X POST "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow; then
+            echo "Pages site created — giving it a moment to provision"
+            sleep 15
+            exit 0
+          fi
+          echo "::error::GitHub Pages is not enabled for this repo, and the workflow token is not allowed to create it."
+          echo "::error::One-time fix (repo admin): https://github.com/$GITHUB_REPOSITORY/settings/pages → Build and deployment → Source: GitHub Actions."
+          exit 1
 
       - name: Node
         uses: actions/setup-node@v4
