@@ -9,7 +9,7 @@
 
 import { h, clear, gradient } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { APPS, CONTACTS, appMeta } from '../core/store.js';
+import { APPS, CONTACTS, appMeta, allAppIds } from '../core/store.js';
 import NovaMotion from '../motion/motion.js';
 import { stagger as staggerMs } from '../motion/config.js';
 import { draggable } from '../motion/gestures.js';
@@ -93,11 +93,11 @@ export function mountCore(layer, ctx = {}) {
   const tabTiles = h('button', {
     class: 'core__tab core__tab--on',
     onclick: () => { ctx.emit?.('tick'); setView('tiles'); },
-  }, icon('actions', 'ico ico--sm'), h('span', {}, 'المقترحة'));
+  }, h('span', { html: icon('actions', 'ico ico--sm') }), h('span', {}, 'المقترحة'));
   const tabGrid = h('button', {
     class: 'core__tab',
     onclick: () => { ctx.emit?.('tick'); setView('grid'); },
-  }, icon('apps', 'ico ico--sm'), h('span', { id: 'tab-grid-label' }, 'كل التطبيقات'));
+  }, h('span', { html: icon('apps', 'ico ico--sm') }), h('span', { id: 'tab-grid-label' }, 'كل التطبيقات'));
   const tabs = h('div', { class: 'core__tabs' }, tabTiles, tabGrid);
 
   function setView(v) {
@@ -149,6 +149,7 @@ export function mountCore(layer, ctx = {}) {
       }, face.html, h('span', {}, face.name));
       tiles.append(el);
       tileEls.set(appId, el);
+      el.style.opacity = '0';
 
       // long-press a real app → deep shortcuts + info + uninstall
       if (!APPS[appId]) bindShortcuts(el, appId);
@@ -160,6 +161,20 @@ export function mountCore(layer, ctx = {}) {
         onEnd: (e, d) => ctx.onTileDragEnd?.(appId, el, d, e),
       });
     });
+    const kids = Array.from(tileEls.values());
+    if (kids.length) {
+      const wave = NovaMotion.cascade({
+        items: kids,
+        stagger: staggerMs(28),
+        span: 420,
+        springName: 'ELASTIC',
+        onUpdate: (node, _i, p) => {
+          node.style.opacity = String(Math.min(1, p * 1.5));
+          node.style.transform = `translate3d(0, ${((1 - p) * 18).toFixed(1)}px, 0) scale(${(0.9 + 0.1 * p).toFixed(3)})`;
+        },
+      });
+      wave.release('commit', 750);
+    }
   }
 
   /* ── the drawer: every installed app, alphabetical, real icons ── */
@@ -235,6 +250,20 @@ export function mountCore(layer, ctx = {}) {
         h('span', { html: icon('search', 'ico') }),
         h('span', {}, 'مفيش تطبيق بالاسم ده'),
       ));
+    } else {
+      const kids = Array.from(grid.children);
+      kids.forEach((k) => { k.style.opacity = '0'; });
+      const wave = NovaMotion.cascade({
+        items: kids,
+        stagger: staggerMs(18),
+        span: 520,
+        springName: 'SNAP',
+        onUpdate: (node, _i, p) => {
+          node.style.opacity = String(Math.min(1, p * 1.6));
+          node.style.transform = `translate3d(0, ${((1 - p) * 16).toFixed(1)}px, 0) scale(${(0.86 + 0.14 * p).toFixed(3)})`;
+        },
+      });
+      wave.release('commit', 700);
     }
 
     // real icons arrive in batches — one bridge crossing per screenful,

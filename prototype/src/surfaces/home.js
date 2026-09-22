@@ -61,8 +61,8 @@ const RING_RADIUS = 68;
 
 function demoSuggestions() {
   const uni = universeIds();
-  if (uni.length) return rotateFrom(uni, cardShift, 4);
-  return ['notes', 'maps', 'whatsapp', 'browser'];
+  if (uni.length) return rotateFrom(uni, cardShift, 10);
+  return ['notes', 'maps', 'whatsapp', 'browser', 'gallery', 'music', 'calendar', 'phone'];
 }
 
 /** The four cards that matter right now — real packages in the APK. */
@@ -123,16 +123,18 @@ export function mountHome(layer, ctx = {}) {
 
   /* the FLOW card mirrors the phone's REAL events inside the APK */
   const native = isNativeLauncher();
-  const taskSub = h('span', {}, native ? flowSummary() : 'اجتماع الفريق — 25 دقيقة');
-  const taskBadge = h('span', { class: 'badge' }, native ? String(liveNotifications().length || 'هادئ') : 'قريبًا');
+  const taskSub = h('span', {}, native ? flowSummary() : 'اجتماع الفريق · قاعة التصميم');
+  const taskWhen = h('span', { class: 'home__task-when' }, native ? '' : 'اليوم · 2:30 — 3:15');
+  const taskBadge = h('span', { class: 'badge' }, native ? String(liveNotifications().length || 'هادئ') : '25 دقيقة');
   const task = h('button', {
     class: 'card home__task',
     onclick: (e) => { ripple(e); ctx.onTask?.(); },
   },
-    h('span', { html: icon('actions', 'ico') }),
+    h('span', { class: 'home__task-ico', html: icon('calendar', 'ico') }),
     h('span', { class: 't' },
-      h('b', {}, native ? 'NOVA FLOW' : 'المهمة القادمة'),
+      h('b', {}, native ? 'NOVA FLOW' : 'الموعد القادم'),
       taskSub,
+      taskWhen,
     ),
     taskBadge,
   );
@@ -332,6 +334,7 @@ export function mountHome(layer, ctx = {}) {
         h('span', { class: 'go', html: icon('chevron', 'ico ico--sm') }),
       );
       el.style.setProperty('--nv-accent', meta.color);
+      el.style.opacity = '0';
       cards.append(el);
       cardEls.set(appId, el);
     });
