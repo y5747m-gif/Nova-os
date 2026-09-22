@@ -8,11 +8,16 @@
 
 ## 1. Path A — install as an app right now (PWA)
 
-**The NOVA URL is: <https://y5747m-gif.github.io/Nova-os/>** — a GitHub Pages deployment of
-`prototype/`, published by `.github/workflows/pages.yml` on every push that touches the prototype
-(the workflow runs the quality gates first; a broken prototype never deploys). The repository root
-also carries a tiny `index.html` that forwards to `prototype/`, so hosting the repo itself on any
-static host still lands in NOVA instead of a 404.
+**The NOVA URL** — either deployment works, both publish the same `prototype/` tree:
+
+- <https://y5747m-gif.github.io/Nova-os/> — GitHub Pages, published by `.github/workflows/pages.yml`
+  on every push that touches the prototype (the workflow runs the quality gates first; a broken
+  prototype never deploys).
+- <https://nova-os-topaz-rho.vercel.app> — Vercel Production, auto-built from `main`
+  (`vercel.json` serves `prototype/` as the site root).
+
+The repository root also carries a tiny `index.html` that forwards to `prototype/`, so hosting the
+repo itself on any static host still lands in NOVA instead of a 404.
 
 Works on any phone, no build, no file transfer:
 
