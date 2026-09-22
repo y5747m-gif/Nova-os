@@ -6,14 +6,19 @@
    The engine only reports; product decisions live in the surfaces.
    ══════════════════════════════════════════════════════════════ */
 
-export const EDGE = 26;      // edge band (px)
+export const EDGE = 26;      // right-edge band (px)
+export const BOTTOM = 48;    // bottom band — the drawer starts from the very bottom
 export const CORNER = 60;    // corner hit box (px)
 export const ENGAGE = 7;     // px before a gesture is "engaged"
 export const VEL_WINDOW = 90; // ms for velocity estimation
 
-export function zoneFor(x, y, w, h) {
+/* controls keep their own taps: Chromium retargets `click` to the pointer
+   capture target, so a capture held by the screen would silence them */
+const INTERACTIVE = 'button, a, input, textarea, select, label, [contenteditable]';
+
+export function zoneFor(x, y, w, h, insetBottom = 0) {
   if (x > w - CORNER && y < CORNER) return 'corner';
-  if (y > h - EDGE) return 'bottom';
+  if (y > h - BOTTOM - insetBottom) return 'bottom';
   if (y < EDGE + 40) return 'top';
   if (x > w - EDGE) return 'right';
   return 'surface';
@@ -26,8 +31,30 @@ export function zoneFor(x, y, w, h) {
 export function attachGestures(screen, {
   onStart, onMove, onEnd, onZone,
   isZoneEnabled = () => true,
+  getInsetBottom = () => 0,   // system nav bar owns its band — zones start above it
 } = {}) {
   let active = null;
+  let swallow = null;
+
+  /* An ENGAGED drag must not also fire the tap that started it. The swallow
+     is armed at pointerup — browsers dispatch the click that belongs to the
+     gesture in the same input batch as pointerup — and it releases itself
+     on the first click or microseconds later, so the NEXT tap always passes. */
+  function releaseSwallow() {
+    if (!swallow) return;
+    screen.removeEventListener('click', swallow, { capture: true });
+    swallow = null;
+  }
+  function armClickSwallow() {
+    if (swallow) return;
+    swallow = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      releaseSwallow();
+    };
+    screen.addEventListener('click', swallow, { capture: true });
+    setTimeout(releaseSwallow, 60);
+  }
 
   function down(e) {
     if (e.button !== undefined && e.button !== 0) return;
@@ -38,9 +65,13 @@ export function attachGestures(screen, {
     const r = screen.getBoundingClientRect();
     const x = e.clientX - r.left;
     const y = e.clientY - r.top;
-    const zone = zoneFor(x, y, r.width, r.height);
+    const zone = zoneFor(x, y, r.width, r.height, getInsetBottom());
     if (!isZoneEnabled(zone)) return;
 
+    /* a touch on a control is a candidate TAP first: capturing the pointer
+       to the screen would retarget its `click` (Chromium) and the control
+       would never fire — so a soft gesture never captures */
+    const soft = !!target?.closest?.(INTERACTIVE);
     active = {
       zone, id: e.pointerId,
       x0: x, y0: y, t0: performance.now(),
@@ -49,8 +80,9 @@ export function attachGestures(screen, {
       samples: [],
       velocity: 0,
       target,
+      soft,
     };
-    screen.setPointerCapture?.(e.pointerId);
+    if (!soft) screen.setPointerCapture?.(e.pointerId);
     onZone?.(zone);
   }
 
@@ -94,7 +126,10 @@ export function attachGestures(screen, {
     if (!active || (e.pointerId !== undefined && e.pointerId !== active.id)) return;
     const a = active;
     active = null;
-    if (a.engaged) onEnd?.(snapshot(a));
+    if (a.engaged) {
+      armClickSwallow();
+      onEnd?.(snapshot(a));
+    }
   }
 
   function snapshot(a) {

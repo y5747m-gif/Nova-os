@@ -177,8 +177,7 @@ export function mountHome(layer, ctx = {}) {
     h('div', { class: 'home__section-title' }, isNativeLauncher() ? 'مقترح لك الآن' : 'مقترح لك من كل التطبيقات'),
     cards,
     h('div', { class: 'home__foot' },
-      h('div', { class: 'home__pill' }),
-      h('small', {}, 'اسحب للأعلى · NOVA CORE · اضغط مطولاً للتخصيص'),
+      h('small', {}, 'اسحب الخانة السفلية لأعلى · NOVA CORE · اضغط مطولاً للتخصيص'),
     ),
   );
 

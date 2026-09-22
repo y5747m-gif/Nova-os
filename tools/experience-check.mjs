@@ -477,6 +477,68 @@ await goHome();
 }
 
 /* ══════════════════════════════════════════════════════════════
+   Taps must never be swallowed by the gesture engine (Chromium
+   retargets `click` to the pointer-capture target), and الخانة
+   السفلية must open CORE from the very bottom of the screen.
+   ══════════════════════════════════════════════════════════════ */
+{
+  const gestMod = await import(`file://${ROOT}/src/motion/gestures.js`);
+  check('zones: the bottom band is generous (48px)', gestMod.zoneFor(195, 830, 390, 844) === 'bottom');
+  check('zones: the band sits above a nav-bar inset', gestMod.zoneFor(195, 780, 390, 844, 48) === 'bottom'
+    && gestMod.zoneFor(195, 700, 390, 844, 48) === 'surface');
+
+  /* a tap on an app icon: the browser delivers pointerdown → pointerup →
+     click on the BUTTON itself — the engine must keep its tap alive */
+  const tapCard = window.document.querySelector('#layer-home .app-card[data-app="maps"]')
+    || window.document.querySelector('#layer-home .app-card');
+  tapCard.dispatchEvent(mkEv('pointerdown', { clientX: 60, clientY: 640, bubbles: true, cancelable: true, pointerId: 21 }));
+  tapCard.dispatchEvent(mkEv('pointerup', { clientX: 60, clientY: 638, bubbles: true, cancelable: true, pointerId: 21 }));
+  tapCard.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 650));
+  check('tap: an app icon opens its app', N.state.surface === 'app', N.state.surface);
+  N.back();
+  await new Promise((r) => setTimeout(r, 500));
+  await goHome();
+
+  /* a drag that starts on an icon still opens CORE — and must NOT also
+     fire the icon's click (the trailing click is swallowed once) */
+  let clicks = 0;
+  const probe = window.document.querySelector('#layer-home .app-card');
+  probe.addEventListener('click', () => { clicks++; }, { once: true });
+  pointer('pointerdown', 60, 640);
+  for (let i = 1; i <= 10; i++) pointer('pointermove', 60, 640 - i * 30);
+  pointer('pointerup', 60, 340);
+  probe.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));   // what the browser synthesizes after pointerup
+  await new Promise((r) => setTimeout(r, 500));
+  check('drag from an icon opens CORE, not the app', N.state.panel === 'core', String(N.state.panel));
+  check('…and the trailing click is swallowed', clicks === 0, String(clicks));
+  N.closePanel();
+  await new Promise((r) => setTimeout(r, 400));
+  await goHome();
+
+  /* الخانة السفلية: a tap opens CORE; dragging it up follows the finger */
+  const pull = window.document.querySelector('#nav-pull');
+  check('the bottom slot exists on the screen', !!pull);
+  check('the bottom slot is visible at home', pull?.dataset.off === '0', `off=${pull?.dataset.off}`);
+  pull.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 450));
+  check('tapping الخانة السفلية opens CORE', N.state.panel === 'core', String(N.state.panel));
+  check('CORE owns the bottom while open (slot stands down)', pull.dataset.off === '1', `off=${pull.dataset.off}`);
+  N.closePanel();
+  await new Promise((r) => setTimeout(r, 400));
+  const pf = (type, x, y) => pull.dispatchEvent(mkEv(type, { clientX: x, clientY: y, bubbles: true, cancelable: true, pointerId: 31 }));
+  pf('pointerdown', 195, 838);
+  pf('pointermove', 195, 700);
+  pf('pointermove', 195, 560);
+  pf('pointerup', 195, 560);
+  await new Promise((r) => setTimeout(r, 500));
+  check('dragging الخانة السفلية up opens CORE', N.state.panel === 'core', String(N.state.panel));
+  N.closePanel();
+  await new Promise((r) => setTimeout(r, 300));
+  await goHome();
+}
+
+/* ══════════════════════════════════════════════════════════════
    البكرات (Reels) — clips that really play
    ══════════════════════════════════════════════════════════════ */
 N.openApp('video', null);

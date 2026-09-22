@@ -713,6 +713,17 @@ const zoneEnabled = (zone) => {
   return true;
 };
 
+/* the APK/iOS shell reports the system-bar insets as CSS vars — the nav
+   bar band swallows every touch itself, so NOVA's bottom zone has to be
+   measured from ABOVE it (the swipe still starts at أقصى الأسفل) */
+function insetBottomPx() {
+  try {
+    const root = getComputedStyle(document.documentElement).getPropertyValue('--nv-inset-bottom');
+    const safe = getComputedStyle(document.body).getPropertyValue('--nv-safe-bottom');
+    return Math.max(0, parseFloat(root) || 0, parseFloat(safe) || 0);
+  } catch { return 0; }
+}
+
 let dragIntent = null;
 
 function onGestureStart(g) {
@@ -902,7 +913,67 @@ attachGestures(screen, {
   onMove: onGestureMove,
   onEnd: onGestureEnd,
   isZoneEnabled: zoneEnabled,
+  getInsetBottom: insetBottomPx,
 });
+
+/* ── الخانة السفلية — the bottom drawer handle ───────────────────
+   Grab the very bottom of the screen and drag up: NOVA CORE follows
+   the finger pixel by pixel. A plain tap opens it too. Release
+   decides complete/cancel by distance and travel. */
+const navPull = document.getElementById('nav-pull');
+let pullDrag = null;
+if (navPull) {
+  draggable(navPull, {
+    axis: 'y',
+    onStart: () => {
+      if (state.surface === 'lock' || state.panel === 'core') return;
+      navPull.dataset.moved = '1';
+      pullDrag = { y: 0 };
+      openPanelSilently('core');
+      ui.core.animateOrbit('commit', 0);
+    },
+    onMove: (_e, d) => {
+      if (!pullDrag) return;
+      pullDrag.y = Math.min(0, d.dy);
+      panelCtl.core.set(clamp(-pullDrag.y / (screen.clientHeight * 0.5)));
+      navPull.style.transform = `translateX(-50%) translate3d(0, ${pullDrag.y.toFixed(1)}px, 0)`;
+    },
+    onEnd: (_e, d) => {
+      const drag = pullDrag;
+      pullDrag = null;
+      // the pill springs back to its slot at the very bottom
+      NovaMotion.spring({
+        from: drag?.y || 0, to: 0, springName: 'SNAP',
+        onUpdate: (v) => { navPull.style.transform = `translateX(-50%) translate3d(0, ${v.toFixed(1)}px, 0)`; },
+      });
+      if (!drag) return;
+      const p = clamp(-(drag.y) / (screen.clientHeight * 0.5));
+      const commit = p > 0.3 || drag.y < -110;
+      if (commit) {
+        state.panel = 'core';
+        panelCtl.core.release('commit', 900);
+        ui.core.animateOrbit('commit', 900);
+        NovaMotion.emit('open');
+      } else {
+        state.panel = null;
+        panelCtl.core.release('cancel', 0);
+        ui.core.animateOrbit('cancel', 0);
+      }
+      setTimeout(() => { delete navPull.dataset.moved; }, 120);
+      paintCaption();
+    },
+  });
+  // a plain tap on the slot opens CORE as well
+  navPull.addEventListener('click', () => {
+    if (navPull.dataset.moved || state.surface === 'lock' || state.panel === 'core') return;
+    openPanel('core');
+  });
+  navPull.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (state.surface !== 'lock' && state.panel !== 'core') openPanel('core');
+  });
+}
 
 /* lock: touch brings the tools in */
 screen.addEventListener('pointerdown', () => { if (state.surface === 'lock') ui.lock.touched(); });
@@ -911,13 +982,16 @@ screen.addEventListener('pointerdown', () => { if (state.surface === 'lock') ui.
 function paintCaption() {
   const map = {
     lock: 'شاشة القفل · اسحب للأعلى للدخول',
-    home: 'Dynamic Space · اسحب من الأسفل CORE · من الأعلى FLOW · من الزاوية CONTROL',
+    home: 'Dynamic Space · اسحب من أقصى الأسفل CORE · من الأعلى FLOW · من الزاوية CONTROL',
     app: 'تطبيق مفتوح · اسحب من الحافة اليمنى رجوع (تفاعلي) · اسحب لأسفل للتصغير إلى CANVAS',
     canvas: 'NOVA CANVAS · حرّك النوافذ · اسحبها خارج المساحة لإغلاقها',
     split: 'Split Flow · اسحب الفاصل — فيه نقاط توقف 25/50/75',
   };
   caption.innerHTML = map[state.surface] || '';
   statusbar.style.opacity = state.surface === 'lock' ? '0' : '1';
+  /* الخانة السفلية: a home/app affordance — it stands down on the lock
+     surface and while a panel already owns the bottom */
+  if (navPull) navPull.dataset.off = (state.surface === 'lock' || state.panel) ? '1' : '0';
 }
 
 /* ── deck ──────────────────────────────────────────────────────── */
