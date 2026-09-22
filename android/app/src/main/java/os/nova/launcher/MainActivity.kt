@@ -336,6 +336,8 @@ class MainActivity : ComponentActivity() {
             append("def:b.isDefaultLauncher(),")
             append("notif:b.hasNotificationAccess(),")
             append("usage:b.hasUsageAccess(),")
+            append("post:b.hasPermission('android.permission.POST_NOTIFICATIONS'),")
+            append("contacts:b.hasPermission('android.permission.READ_CONTACTS'),")
             append("setup:b.setupDone()")
             append("};window.dispatchEvent(new CustomEvent('nova:launcher'));}catch(e){}")
             append("})()")
@@ -487,6 +489,9 @@ class MainActivity : ComponentActivity() {
 
     private fun askNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        // never ambush a first run with a system dialog: the setup wizard
+        // asks at the right moment, this only tops up afterwards
+        if (!NovaPrefs.setupDone(this)) return
         val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
         if (!granted) {

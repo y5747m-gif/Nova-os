@@ -56,6 +56,10 @@ const statusbar = document.getElementById('statusbar');
 const toastEl = document.getElementById('toast');
 const caption = document.getElementById('gesture-caption');
 
+/* inside the APK the REAL system bars are drawn over NOVA (transparent,
+   edge-to-edge) — the demo clock/battery would double them on a phone */
+if (isNativeLauncher()) statusbar.classList.add('status--native');
+
 /* ── wallpaper blobs (Dynamic Space) + the living FX layer ─────── */
 L.wallpaper.append(h('i'), h('i'), h('i'), h('i', { class: 'blob-aurora' }));
 let fx = null;
@@ -1226,6 +1230,7 @@ if (isNativeLauncher()) {
 function NovaBack() {
   if (ui.setup?.isOpen) { ui.setup.close(); return true; }
   if (ui.install?.isOpen) { ui.install.close(); return true; }
+  if (ui.core?.closePop?.()) return true;   // an app's long-press popup closes first
   const power = document.querySelector('.power');
   if (power) { power.remove(); NovaMotion.emit('close'); return true; }
   if (state.panel) { closePanel(); return true; }

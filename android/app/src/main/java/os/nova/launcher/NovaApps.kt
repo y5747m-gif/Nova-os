@@ -42,6 +42,7 @@ object NovaApps {
     @Volatile private var cache: List<Entry>? = null
     @Volatile private var cacheAt: Long = 0L
     private val iconCache = ConcurrentHashMap<String, String>()
+    private val shortcutIconCache = ConcurrentHashMap<String, String>()
     private const val CACHE_TTL_MS = 30_000L
 
     /* ── catalogue ───────────────────────────────────────────── */
@@ -79,6 +80,23 @@ object NovaApps {
     fun invalidate() {
         cache = null
         iconCache.clear()
+        shortcutIconCache.clear()
+    }
+
+    /** Real deep-shortcut icon for the long-press popup (base64 PNG, 96 px). */
+    private fun shortcutIcon(launcherApps: LauncherApps, s: android.content.pm.ShortcutInfo): String {
+        val key = "${s.`package`}#${s.id}"
+        shortcutIconCache[key]?.let { return it }
+        val uri = try {
+            val d = launcherApps.getShortcutIconDrawable(s, android.util.DisplayMetrics.DENSITY_XHIGH)
+                ?: return ""
+            "data:image/png;base64," + Base64.encodeToString(rasterize(d, 96), Base64.NO_WRAP)
+        } catch (_: Exception) { "" }
+        if (uri.isNotEmpty()) {
+            if (shortcutIconCache.size > 160) shortcutIconCache.clear()
+            shortcutIconCache[key] = uri
+        }
+        return uri
     }
 
     /** Compact catalogue JSON for the web layer: [{p: package, l: label}]. */
@@ -106,6 +124,28 @@ object NovaApps {
             iconCache[packageName] = uri
         }
         return uri
+    }
+
+    /**
+     * Batched icons for the app drawer — ONE bridge crossing fills a
+     * whole screenful of tiles: `{ "pkg": "data:image/png;base64,…" }`.
+     * `packagesJson` is a JSON array of package names.
+     */
+    fun iconsJson(ctx: Context, packagesJson: String, max: Int = 36): String {
+        val requested = try { JSONArray(packagesJson) } catch (_: Exception) { return "{}" }
+        val obj = JSONObject()
+        val cap = max.coerceIn(1, 60)
+        var n = 0
+        var i = 0
+        while (i < requested.length() && n < cap) {
+            val pkg = try { requested.optString(i) } catch (_: Exception) { "" }
+            i++
+            if (pkg.isEmpty()) continue
+            val uri = iconUri(ctx, pkg)
+            if (uri.isNotEmpty()) obj.put(pkg, uri)
+            n++
+        }
+        return obj.toString()
     }
 
     private fun rasterize(d: Drawable, px: Int): ByteArray {

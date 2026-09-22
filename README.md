@@ -112,7 +112,9 @@ npm run check    # the four gates below
 - **Dynamic Space** home: greeting, live context, and cards that reorder by time of day.
 - **Continuity open**: the card you tap *morphs* into the app surface (shared-element, gesture-controllable).
 - **Interactive back** (drag from the right edge): the screen follows your finger, the previous surface peeks behind, release decides complete/cancel by position **and velocity**.
-- **NOVA CORE** (swipe up from the bottom): orbital launchpad with search, apps, people, files, actions.
+- **NOVA CORE** (swipe up from the bottom): orbital launchpad with search, apps, people, files, actions —
+  and a full **app drawer** tab (كل التطبيقات): every installed app in an alphabetical grid with
+  real icons, Arabic-aware search normalisation, and long-press deep shortcuts.
 - **NOVA FLOW** (swipe down from the top): event cards with inline actions instead of a notification list.
 - **Notification Orb**: while media plays, events collapse into an edge orb you must pull — nothing interrupts.
 - **NOVA CANVAS**: open apps live in a 2D pannable space; drag windows, sweep to close.

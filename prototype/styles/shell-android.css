@@ -77,6 +77,14 @@ body[data-shell="app"] .edge-hint--bottom { bottom: calc(6px + var(--nv-inset-bo
 body[data-shell="app"] .edge-hint--top { top: calc(56px + var(--nv-inset-top, 0px) + var(--nv-safe-top)); }
 body[data-shell="app"] .install-sheet { padding-bottom: calc(22px + var(--nv-inset-bottom, 0px) + var(--nv-safe-bottom)); }
 
+/* the real system bars render over NOVA in the APK — the demo
+   clock/battery strip would double them, so it goes invisible
+   (the element stays: the FLOW swipe zone keeps its height) */
+body[data-shell="app"] .status--native {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
 /* gesture hints are for the deck demo, not for a real phone */
 body[data-shell="app"] .edge-hint { display: none; }
 

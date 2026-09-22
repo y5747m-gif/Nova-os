@@ -57,6 +57,11 @@ class NovaBridge(
     fun appIcon(packageName: String): String =
         guarded("") { NovaApps.iconUri(ctx, packageName) }
 
+    /** Batched icons for a whole drawer screen: JSON array in, `{pkg: dataUri}` out. */
+    @JavascriptInterface
+    fun iconsFor(packagesJson: String): String =
+        guarded("{}") { NovaApps.iconsJson(ctx, packagesJson) }
+
     @JavascriptInterface
     fun launchApp(packageName: String): Boolean =
         guarded(false) { NovaApps.launch(ctx, packageName) }
@@ -159,6 +164,12 @@ class NovaBridge(
     @JavascriptInterface
     fun askPermission(permission: String) {
         activity.runOnUiThread { activity.askRuntimePermission(permission) }
+    }
+
+    /** Real runtime-permission check so the UI never fakes a grant. */
+    @JavascriptInterface
+    fun hasPermission(permission: String): Boolean = guarded(false) {
+        ctx.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
 
     /* ── widgets ──────────────────────────────────────────────── */
