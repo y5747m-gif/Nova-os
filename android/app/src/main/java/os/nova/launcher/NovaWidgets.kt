@@ -23,11 +23,11 @@ object NovaWidgets {
     const val REQ_CONFIGURE = 4103
     const val HOST_ID = 4101
 
-    @Volatile private var host: AppWidgetHost? = null
+    @Volatile private var hostInstance: AppWidgetHost? = null
 
     fun host(ctx: Context): AppWidgetHost {
-        return host ?: synchronized(this) {
-            host ?: AppWidgetHost(ctx.applicationContext, HOST_ID).also { host = it }
+        return hostInstance ?: synchronized(this) {
+            hostInstance ?: AppWidgetHost(ctx.applicationContext, HOST_ID).also { hostInstance = it }
         }
     }
 
@@ -36,7 +36,7 @@ object NovaWidgets {
     }
 
     fun stopListening() {
-        try { host?.stopListening() } catch (_: Exception) { }
+        try { hostInstance?.stopListening() } catch (_: Exception) { }
     }
 
     fun manager(ctx: Context): AppWidgetManager? =

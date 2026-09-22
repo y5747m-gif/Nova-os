@@ -192,8 +192,8 @@ class NovaBridge(
     }
 
     @JavascriptInterface
-    fun setBrightness(value: Float) {
-        activity.runOnUiThread { activity.setWindowBrightness(value) }
+    fun setBrightness(value: Double) {
+        activity.runOnUiThread { activity.setWindowBrightness(value.toFloat()) }
     }
 
     @JavascriptInterface
