@@ -31,4 +31,36 @@ object NovaPrefs {
     fun setSeenUpdate(ctx: Context, tag: String?) {
         prefs(ctx).edit().putString(KEY_SEEN_UPDATE, tag).apply()
     }
+
+    /* ── setup wizard ─────────────────────────────────────────── */
+    private const val KEY_SETUP_DONE = "setup_done"
+    private const val KEY_WALLPAPER = "wallpaper_mode"
+
+    fun setupDone(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_SETUP_DONE, false)
+    fun setSetupDone(ctx: Context, done: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_SETUP_DONE, done).apply()
+    }
+
+    /** aurora | system | dim — how the Dynamic Space background renders */
+    fun wallpaperMode(ctx: Context): String = prefs(ctx).getString(KEY_WALLPAPER, "aurora") ?: "aurora"
+    fun setWallpaperMode(ctx: Context, mode: String) {
+        prefs(ctx).edit().putString(KEY_WALLPAPER, mode).apply()
+    }
+
+    /* ── placed system widgets ────────────────────────────────── */
+    private const val KEY_WIDGETS = "widgets"
+
+    fun widgets(ctx: Context): List<Int> =
+        prefs(ctx).getString(KEY_WIDGETS, "").orEmpty()
+            .split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it >= 0 }
+
+    fun addWidget(ctx: Context, id: Int) {
+        val ids = (widgets(ctx) + id).distinct()
+        prefs(ctx).edit().putString(KEY_WIDGETS, ids.joinToString(",")).apply()
+    }
+
+    fun removeWidget(ctx: Context, id: Int) {
+        val ids = widgets(ctx) - id
+        prefs(ctx).edit().putString(KEY_WIDGETS, ids.joinToString(",")).apply()
+    }
 }

@@ -1,13 +1,23 @@
 package os.nova.launcher
 
 import android.annotation.SuppressLint
+import android.app.WallpaperManager
+import android.app.role.RoleManager
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -17,10 +27,12 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -35,14 +47,18 @@ import androidx.webkit.WebViewFeature
  * prototype) and is served through WebViewAssetLoader on a secure origin,
  * so storage, media and the JS engine behave exactly like the web build.
  *
- * The shell adds what a browser cannot give:
+ * The shell is a real Android launcher:
+ *   · HOME intent + ROLE_HOME request → NOVA can be the default launcher
+ *   · the NovaSystem JS bridge: installed apps, icons, shortcuts, widgets,
+ *     live notifications, usage-ranked suggestions, contacts, wallpaper
  *   · edge-to-edge, real system-bar insets handed to CSS (--nv-inset-*)
  *   · hardware back routed into NOVA's own navigation (window.NovaBack)
- *   · the NovaSystem JS bridge: notifications, downloads, installer, prefs
+ *   · system wallpaper behind a transparent WebView (optional)
  */
 class MainActivity : ComponentActivity() {
 
     private lateinit var web: WebView
+    private var wallpaperView: ImageView? = null
     private var insetTop = 0
     private var insetBottom = 0
     private var fileCallback: android.webkit.ValueCallback<Array<Uri>>? = null
@@ -62,6 +78,30 @@ class MainActivity : ComponentActivity() {
     private val notificationPermission: ActivityResultLauncher<String> =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* NOVA works either way */ }
 
+    private val runtimePermission: ActivityResultLauncher<String> =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            web.evaluateJavascript(
+                "window.NovaOnPermission && NovaOnPermission(${if (granted) 1 else 0})", null
+            )
+        }
+
+    private val homeRole: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            pushLauncherState()
+        }
+
+    private val wallpaperPick: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) applyWallpaperMode()
+        }
+
+    private val packageChanges = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            NovaApps.invalidate()
+            web.evaluateJavascript("window.NovaOnAppsChanged && NovaOnAppsChanged()", null)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -80,6 +120,17 @@ class MainActivity : ComponentActivity() {
         }
 
         NovaNotify.ensureChannels(this)
+        NovaWidgets.startListening(this)
+
+        val root = FrameLayout(this)
+        wallpaperView = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            visibility = android.view.View.GONE
+        }
+        root.addView(wallpaperView)
 
         web = WebView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -91,8 +142,10 @@ class MainActivity : ComponentActivity() {
             isHorizontalScrollBarEnabled = false
         }
         configure(web)
-        setContentView(web)
+        root.addView(web)
+        setContentView(root)
         applyInsets(web)
+        applyWallpaperMode()
 
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
@@ -107,9 +160,14 @@ class MainActivity : ComponentActivity() {
                 // NOVA decides first: panels, canvas, collapsed apps all answer here
                 web.evaluateJavascript("(window.NovaBack ? NovaBack() : false) ? 1 : 0") { value ->
                     if (value != "1") {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                        isEnabled = true
+                        if (isTaskRoot) {
+                            // NOVA *is* home — Back at home does nothing (like any launcher)
+                            web.evaluateJavascript("window.NovaBack && NovaBack()", null)
+                        } else {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                            isEnabled = true
+                        }
                     }
                 }
             }
@@ -117,6 +175,38 @@ class MainActivity : ComponentActivity() {
 
         askNotificationPermission()
         NovaPrefs.noteLaunch(this)
+
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                packageChanges,
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+                    addAction(Intent.ACTION_PACKAGE_REMOVED)
+                    addAction(Intent.ACTION_PACKAGE_REPLACED)
+                    addDataScheme("package")
+                },
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+        } catch (_: Exception) { }
+
+        handleDeepLink(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        NovaWidgets.startListening(this)
+        pushLauncherState()
+        pushNotifications(NovaNotificationService.snapshot(applicationContext))
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Tapping NOVA's own icon while it runs = go home inside NOVA (launcher behaviour)
+        if (intent.hasCategory(Intent.CATEGORY_LAUNCHER) || intent.hasCategory(Intent.CATEGORY_HOME)) {
+            web.evaluateJavascript("window.NovaGoHome && NovaGoHome()", null)
+        }
+        handleDeepLink(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -125,8 +215,20 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        try { unregisterReceiver(packageChanges) } catch (_: Exception) { }
         web.destroy()
         super.onDestroy()
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        if (intent?.action != ACTION_DEEP_LINK) return
+        val route = intent.getStringExtra(EXTRA_ROUTE).orEmpty()
+        if (route.isNotEmpty()) {
+            val safe = route.replace("'", "")
+            web.postDelayed({
+                web.evaluateJavascript("window.NovaOnRoute && NovaOnRoute('$safe')", null)
+            }, 600)
+        }
     }
 
     /* ── WebView configuration ─────────────────────────────────── */
@@ -173,6 +275,7 @@ class MainActivity : ComponentActivity() {
 
             override fun onPageFinished(webView: WebView, url: String?) {
                 injectInsets()
+                pushLauncherState()
             }
         }
 
@@ -223,6 +326,157 @@ class MainActivity : ComponentActivity() {
         web.evaluateJavascript(js, null)
     }
 
+    /* ── launcher state → web ─────────────────────────────────── */
+    private fun pushLauncherState() {
+        if (!::web.isInitialized) return
+        val js = buildString {
+            append("(function(){")
+            append("var b=window.NovaSystem;if(!b||!b.isDefaultLauncher)return;")
+            append("try{window.NovaLauncherState={")
+            append("def:b.isDefaultLauncher(),")
+            append("notif:b.hasNotificationAccess(),")
+            append("usage:b.hasUsageAccess(),")
+            append("setup:b.setupDone()")
+            append("};window.dispatchEvent(new CustomEvent('nova:launcher'));}catch(e){}")
+            append("})()")
+        }
+        web.evaluateJavascript(js, null)
+    }
+
+    /* ── HOME role ────────────────────────────────────────────── */
+    fun requestHomeRole() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val rm = getSystemService(RoleManager::class.java)
+                if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME) &&
+                    !rm.isRoleHeld(RoleManager.ROLE_HOME)
+                ) {
+                    homeRole.launch(rm.createRequestRoleIntent(RoleManager.ROLE_HOME))
+                    return
+                }
+            }
+            openHomeSettings()
+        } catch (_: Exception) {
+            openHomeSettings()
+        }
+    }
+
+    fun openHomeSettings() {
+        // Official "default home" screen (Android 10+); older phones get app settings.
+        val candidates = listOf(
+            Intent("android.settings.HOME_SETTINGS"),
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            },
+        )
+        for (intent in candidates) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                return
+            } catch (_: ActivityNotFoundException) { continue }
+        }
+    }
+
+    fun askRuntimePermission(permission: String) {
+        val allowed = setOf(
+            android.Manifest.permission.READ_CONTACTS,
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            android.Manifest.permission.POST_NOTIFICATIONS,
+            android.Manifest.permission.BLUETOOTH_CONNECT,
+            android.Manifest.permission.READ_MEDIA_IMAGES,
+            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+        )
+        if (permission !in allowed) return
+        try {
+            if (ContextCompat.checkSelfPermission(this, permission) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                web.evaluateJavascript("window.NovaOnPermission && NovaOnPermission(1)", null)
+            } else {
+                runtimePermission.launch(permission)
+            }
+        } catch (_: Exception) { }
+    }
+
+    /* ── wallpaper ────────────────────────────────────────────── */
+    fun applyWallpaperMode() {
+        if (!::web.isInitialized) return
+        val mode = NovaPrefs.wallpaperMode(this)
+        val useSystem = mode == "system" || mode == "dim"
+        try {
+            if (useSystem) {
+                val wm = WallpaperManager.getInstance(this)
+                val drawable: Drawable? = wm.drawable
+                if (drawable != null) {
+                    wallpaperView?.setImageDrawable(drawable.constantState?.newDrawable()?.mutate() ?: drawable)
+                    wallpaperView?.visibility = View.VISIBLE
+                    if (mode == "dim") wallpaperView?.alpha = 0.45f else wallpaperView?.alpha = 1f
+                    web.setBackgroundColor(Color.TRANSPARENT)
+                    web.evaluateJavascript("document.body.dataset.wallpaper='system'", null)
+                    return
+                }
+            }
+        } catch (_: Exception) { }
+        wallpaperView?.visibility = View.GONE
+        web.setBackgroundColor(Color.parseColor("#07080B"))
+        web.evaluateJavascript("document.body.dataset.wallpaper='aurora'", null)
+    }
+
+    fun pickSystemWallpaper() {
+        val candidates = listOf(
+            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER),
+            Intent(Intent.ACTION_SET_WALLPAPER),
+            Intent("android.settings.HOME_SETTINGS"),
+        )
+        for (intent in candidates) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                wallpaperPick.launch(intent)
+                return
+            } catch (_: Exception) { continue }
+        }
+    }
+
+    /* ── control surface helpers ──────────────────────────────── */
+    fun setWindowBrightness(value: Float) {
+        try {
+            val lp = window.attributes
+            lp.screenBrightness = value.coerceIn(0.05f, 1f)
+            window.attributes = lp
+        } catch (_: Exception) { }
+    }
+
+    fun nativeHaptic(kind: String) {
+        try {
+            val ms = when (kind) {
+                "open" -> 8L
+                "close" -> 14L
+                "snap" -> 10L
+                "success" -> 20L
+                "error" -> 30L
+                else -> 6L
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = getSystemService(VibratorManager::class.java)
+                vm?.defaultVibrator?.vibrate(
+                    VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                val vib = getSystemService(VIBRATOR_SERVICE) as? Vibrator
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vib?.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vib?.vibrate(ms)
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
     /* ── helpers used by the bridge ───────────────────────────── */
     private fun openExternally(uri: Uri): Boolean = try {
         startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -243,5 +497,30 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val DOMAIN = "nova.local"
         const val START_URL = "https://$DOMAIN/assets/www/index.html"
+        const val ACTION_DEEP_LINK = "os.nova.launcher.DEEP_LINK"
+        const val EXTRA_ROUTE = "route"
+
+        @Volatile private var activeWeb: WebView? = null
+        internal fun bindWeb(view: WebView) {
+            activeWeb = view
+        }
+
+        /** Push live notifications into the web layer (FLOW feed). */
+        fun pushNotifications(snapshot: String) {
+            val view = activeWeb ?: return
+            view.post {
+                try {
+                    val safe = snapshot.replace("\\", "\\\\").replace("'", "\\'")
+                    view.evaluateJavascript(
+                        "window.NovaOnNotifications && NovaOnNotifications('$safe')", null
+                    )
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (::web.isInitialized) bindWeb(web)
     }
 }

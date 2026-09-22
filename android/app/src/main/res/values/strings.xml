@@ -5,4 +5,11 @@
     <string name="channel_system">NOVA — النظام</string>
     <string name="notif_update_title">تحديث NOVA OS جاهز</string>
     <string name="notif_update_text">نسخة جديدة متاحة — اضغط للتحميل</string>
+    <string name="notification_service_label">NOVA FLOW — قراءة الإشعارات</string>
+    <string name="widgets_title">ودجات النظام</string>
+    <string name="widgets_sub">ودجات أندرويد الحقيقية — الساعة، الطقس، الموسيقى — تعيش هنا على مساحة NOVA.</string>
+    <string name="widgets_add">＋ إضافة ودجت</string>
+    <string name="widgets_close">إغلاق</string>
+    <string name="widgets_empty">مفيش ودجات بعد — اضغط «إضافة ودجت» واختار من ودجات جهازك.</string>
+    <string name="widgets_remove">إزالة «%1$s»</string>
 </resources>

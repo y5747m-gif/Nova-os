@@ -75,17 +75,17 @@
   opacity: .5;
   will-change: transform;
 }
-.wallpaper i:nth-child(1) {
+.wallpaper i:nth-of-type(1) {
   width: 300px; height: 300px; top: -60px; right: -70px;
   background: radial-gradient(circle at 30% 30%, var(--nv-accent), transparent 68%);
   animation: drift-a 26s ease-in-out infinite alternate;
 }
-.wallpaper i:nth-child(2) {
+.wallpaper i:nth-of-type(2) {
   width: 340px; height: 340px; bottom: -80px; left: -90px;
   background: radial-gradient(circle at 60% 40%, var(--nv-accent-2), transparent 70%);
   animation: drift-b 32s ease-in-out infinite alternate;
 }
-.wallpaper i:nth-child(3) {
+.wallpaper i:nth-of-type(3) {
   width: 220px; height: 220px; top: 38%; left: 55%;
   background: radial-gradient(circle at 50% 50%, var(--nv-bloom), transparent 72%);
   opacity: .28;

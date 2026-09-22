@@ -1,0 +1,325 @@
+/* ══════════════════════════════════════════════════════════════
+   NOVA FX + signature surfaces: boot splash, living wallpaper,
+   setup wizard, real-app faces, ripples and glow.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── living wallpaper canvas ─────────────────────────────────── */
+.fx {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.wallpaper .blob-aurora {
+  width: 420px; height: 420px; top: -140px; left: -120px;
+  background:
+    radial-gradient(circle at 40% 40%, color-mix(in srgb, var(--nv-accent-2) 55%, transparent), transparent 62%),
+    conic-gradient(from 120deg, var(--nv-accent), var(--nv-bloom), var(--nv-accent-2), var(--nv-accent));
+  opacity: .16;
+  filter: blur(70px);
+  animation: drift-d 44s ease-in-out infinite alternate;
+}
+@keyframes drift-d { to { transform: translate3d(60px, 46px, 0) scale(1.15) rotate(24deg); } }
+
+/* film grain + vignette over the wallpaper — the "expensive" look */
+.wallpaper .grain { display: none; }
+.wallpaper::before {
+  content: ""; position: absolute; inset: 0; z-index: 3;
+  background:
+    radial-gradient(130% 100% at 50% 0%, transparent 55%, rgba(0, 0, 0, .38)),
+    repeating-conic-gradient(rgba(255, 255, 255, .014) 0 .00006turn, transparent .00006turn .00012turn);
+  pointer-events: none;
+}
+body[data-mode="light"] .wallpaper::before {
+  background: radial-gradient(130% 100% at 50% 0%, transparent 60%, rgba(17, 19, 24, .14));
+}
+
+/* ── boot splash ─────────────────────────────────────────────── */
+.boot {
+  position: absolute; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px;
+  background: radial-gradient(120% 90% at 50% 10%, #141824 0%, #07080b 62%);
+  color: var(--nv-text);
+}
+.boot__logo {
+  font-size: 44px; font-weight: 700; letter-spacing: 14px;
+  padding-inline-start: 14px;
+  background: linear-gradient(100deg, var(--nv-accent) 10%, #fff 35%, var(--nv-accent-2) 55%, var(--nv-accent) 80%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: boot-shimmer 1.6s linear infinite, boot-rise .7s cubic-bezier(.22, 1, .36, 1) both;
+  filter: drop-shadow(0 8px 30px color-mix(in srgb, var(--nv-accent) 45%, transparent));
+}
+@keyframes boot-shimmer { to { background-position: -220% 0; } }
+@keyframes boot-rise { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+.boot__bar {
+  width: 168px; height: 4px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--nv-text) 10%, transparent);
+}
+.boot__bar i {
+  display: block; height: 100%; width: 40%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--nv-accent), var(--nv-accent-2));
+  animation: boot-bar 1s cubic-bezier(.22, 1, .36, 1) forwards;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--nv-accent) 70%, transparent);
+}
+@keyframes boot-bar { from { width: 4%; } to { width: 100%; } }
+.boot__tag { font-size: 12.5px; color: var(--nv-text-2); letter-spacing: .4px; animation: boot-rise .7s .15s cubic-bezier(.22, 1, .36, 1) both; }
+body[data-motion="reduced"] .boot__logo { animation: none; }
+body[data-motion="reduced"] .boot__bar i { animation-duration: .2s; }
+
+/* ── tap ripple ──────────────────────────────────────────────── */
+.ripple {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--nv-accent) 42%, transparent) 0%, transparent 70%);
+  transform: scale(0);
+  animation: ripple-out .55s cubic-bezier(.22, 1, .36, 1) forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes ripple-out { to { transform: scale(1); opacity: 0; } }
+.app-card, .home__task, .app-tile, .orb-item { position: relative; overflow: hidden; }
+.orb-item { overflow: visible; }
+.orb-item .ripple { overflow: hidden; border-radius: 50%; }
+
+/* ── home: the living clock ──────────────────────────────────── */
+.home__clock {
+  font-size: 54px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--nv-text) 30%, color-mix(in srgb, var(--nv-accent-2) 65%, #fff) 75%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, .35));
+}
+body[data-mode="light"] .home__clock {
+  background: linear-gradient(120deg, #111318 30%, var(--nv-accent) 80%);
+  -webkit-background-clip: text; background-clip: text;
+}
+.home__greet h2 { font-size: 21px; }
+.home__greet { gap: 6px; }
+
+/* suggestion cards: gradient hairline + lift */
+.app-card {
+  border: 1px solid color-mix(in srgb, var(--nv-accent) 26%, var(--nv-line));
+  box-shadow: var(--nv-shadow-card), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.app-card:active { border-color: color-mix(in srgb, var(--nv-accent) 55%, transparent); }
+.app-card--real .meta b { letter-spacing: 0; }
+.app-card__icon {
+  width: 42px; height: 42px; border-radius: 13px; flex: 0 0 auto;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+  background: color-mix(in srgb, var(--nv-text) 8%, transparent);
+}
+.orb-item--real { overflow: hidden; }
+.orb-img {
+  width: 40px; height: 40px; border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+}
+
+/* ── CORE: real faces + shortcut popup ───────────────────────── */
+.tile-img {
+  width: 34px; height: 34px; border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
+}
+.core__result-img {
+  width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+}
+.core__pop {
+  position: absolute; bottom: calc(100% + 10px); inset-inline-start: 50%;
+  transform: translateX(50%);
+  min-width: 190px; max-width: 230px;
+  padding: 10px; border-radius: 18px;
+  background: var(--nv-elevated);
+  border: 1px solid var(--nv-line-strong);
+  box-shadow: var(--nv-shadow-panel);
+  z-index: 60;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.core__pop-title { font-size: 12px; padding: 4px 8px 8px; color: var(--nv-text-2); }
+.core__pop-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px; border-radius: 12px; font-size: 12.5px;
+  color: var(--nv-text);
+}
+.core__pop-item:active { background: color-mix(in srgb, var(--nv-text) 8%, transparent); }
+.core__pop-item--danger { color: var(--nv-coral); }
+
+/* ── FLOW: live system notifications ─────────────────────────── */
+.flow__live {
+  margin-inline-start: auto;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .6px;
+  color: var(--nv-mint);
+  display: flex; align-items: center; gap: 5px;
+  animation: live-pulse 2s ease-in-out infinite;
+}
+@keyframes live-pulse { 50% { opacity: .45; } }
+.event-card--live {
+  border-color: color-mix(in srgb, var(--nv-mint) 34%, var(--nv-line));
+}
+.event-card__icon {
+  width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+}
+.flow__enable {
+  display: flex; align-items: center; gap: 12px;
+  padding: 15px 16px; width: 100%; text-align: start;
+  border: 1px dashed color-mix(in srgb, var(--nv-accent) 45%, transparent);
+}
+.flow__enable .meta { display: flex; flex-direction: column; gap: 3px; }
+.flow__enable .meta b { font-size: 14px; }
+.flow__enable .meta span { font-size: 12px; color: var(--nv-text-2); }
+
+/* ── lock: the cinematic clock ───────────────────────────────── */
+.lock__clock {
+  font-size: 84px;
+  background: linear-gradient(160deg, #fff 40%, color-mix(in srgb, var(--nv-accent-2) 70%, #fff));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.lock__swipe b {
+  background: linear-gradient(90deg, var(--nv-accent), var(--nv-accent-2));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* ══════════════════  SETUP WIZARD  ══════════════════ */
+.setup {
+  position: absolute; inset: 0; z-index: 80;
+  display: grid; place-items: center;
+  padding: 22px;
+  background: color-mix(in srgb, var(--nv-bg) 62%, transparent);
+  backdrop-filter: blur(22px);
+}
+.setup__card {
+  position: relative; overflow: hidden;
+  width: 100%; max-width: 340px; max-height: 92%;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 24px 20px 20px;
+  border-radius: 30px;
+  background: color-mix(in srgb, var(--nv-elevated) 94%, transparent);
+  border: 1px solid var(--nv-line-strong);
+  box-shadow: var(--nv-shadow-panel);
+  will-change: transform;
+}
+.setup__glow {
+  position: absolute; top: -90px; inset-inline: 20px; height: 190px;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--nv-accent) 34%, transparent), transparent 70%);
+  filter: blur(24px);
+  pointer-events: none;
+}
+.setup__dots { display: flex; gap: 6px; justify-content: center; }
+.setup__dot {
+  width: 22px; height: 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--nv-text) 12%, transparent);
+}
+.setup__dot--done { background: color-mix(in srgb, var(--nv-accent) 55%, transparent); }
+.setup__dot--on {
+  background: linear-gradient(90deg, var(--nv-accent), var(--nv-accent-2));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--nv-accent) 60%, transparent);
+}
+.setup__body { display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+.setup__logo {
+  width: 74px; height: 74px; margin: 2px auto 0;
+  border-radius: 26px;
+  display: grid; place-items: center;
+  font-size: 30px; color: #fff;
+  background: linear-gradient(140deg, var(--nv-accent), var(--nv-accent-2));
+  box-shadow: 0 16px 44px color-mix(in srgb, var(--nv-accent) 50%, transparent);
+  animation: setup-breathe 3s ease-in-out infinite;
+}
+@keyframes setup-breathe { 50% { transform: scale(1.05); } }
+.setup__logo--done { border-radius: 50%; font-size: 26px; animation: none; }
+.setup__title { margin: 4px 0 0; font-size: 21px; text-align: center; color: var(--nv-text); }
+.setup__sub { margin: 0; font-size: 13px; line-height: 1.9; text-align: center; color: var(--nv-text-2); }
+.setup__list { display: flex; flex-direction: column; gap: 8px; }
+.setup__row {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px; border-radius: 16px;
+  background: color-mix(in srgb, var(--nv-text) 5%, transparent);
+  border: 1px solid var(--nv-line);
+}
+.setup__ico {
+  width: 38px; height: 38px; border-radius: 12px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.setup__meta { display: flex; flex-direction: column; gap: 2px; }
+.setup__meta b { font-size: 13.5px; color: var(--nv-text); }
+.setup__meta span { font-size: 11.5px; color: var(--nv-text-2); }
+.setup__badge {
+  margin-inline-start: auto; flex: 0 0 auto;
+  font-size: 10.5px; font-weight: 700;
+  padding: 5px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--nv-amber) 18%, transparent);
+  color: var(--nv-amber);
+}
+.setup__badge--on {
+  background: color-mix(in srgb, var(--nv-mint) 18%, transparent);
+  color: var(--nv-mint);
+}
+.setup__foot { display: flex; flex-direction: column; gap: 8px; }
+.setup__btnrow { display: flex; gap: 8px; }
+.setup__btnrow > * { flex: 1; }
+.setup__cta {
+  padding: 14px; border-radius: 18px;
+  font-size: 14.5px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--nv-accent), var(--nv-accent-2));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--nv-accent) 42%, transparent);
+}
+.setup__cta:active { filter: brightness(1.15); }
+.setup__secondary {
+  padding: 12px; border-radius: 18px; font-size: 13px;
+  background: color-mix(in srgb, var(--nv-text) 7%, transparent);
+  border: 1px solid var(--nv-line);
+  color: var(--nv-text);
+}
+.setup__ghost { padding: 8px; font-size: 12.5px; color: var(--nv-text-3); }
+.setup__walls { display: flex; flex-direction: column; gap: 8px; }
+.setup__wall {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 13px 14px; border-radius: 16px; text-align: start;
+  background: color-mix(in srgb, var(--nv-text) 5%, transparent);
+  border: 1px solid var(--nv-line);
+}
+.setup__wall b { font-size: 13.5px; color: var(--nv-text); }
+.setup__wall span { font-size: 11.5px; color: var(--nv-text-2); }
+.setup__wall--on {
+  border-color: color-mix(in srgb, var(--nv-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--nv-accent) 12%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--nv-accent) 35%, transparent);
+}
+
+/* panels: deeper glass */
+.panel {
+  background: color-mix(in srgb, var(--nv-elevated) 82%, transparent);
+  box-shadow: var(--nv-shadow-panel), inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+
+/* hub glow pulse */
+.core__orbit .hub {
+  animation: hub-glow 3.4s ease-in-out infinite;
+}
+@keyframes hub-glow {
+  50% { box-shadow: 0 16px 54px color-mix(in srgb, var(--nv-accent) 65%, transparent); }
+}
+body[data-motion="reduced"] .core__orbit .hub,
+body[data-motion="reduced"] .setup__logo,
+body[data-motion="reduced"] .flow__live { animation: none; }
+
+/* canvas: real-app windows + widget entry */
+.win__icon {
+  width: 24px; height: 24px; border-radius: 7px; flex: 0 0 auto;
+}
+.canvas__widget-btn {
+  margin-inline-start: auto;
+  border: 1px solid color-mix(in srgb, var(--nv-accent) 45%, transparent);
+  color: var(--nv-text);
+  font-size: 11.5px;
+}
+.canvas__bar small { margin-inline-start: 0; }
+
+/* system wallpaper mode: let the phone's wallpaper breathe through */
+body[data-wallpaper="system"] .wallpaper i,
+body[data-wallpaper="system"] .wallpaper::after { opacity: 0; }
+body[data-wallpaper="system"] .screen { background: transparent; }
+body[data-wallpaper="system"] .fx { opacity: .5; }

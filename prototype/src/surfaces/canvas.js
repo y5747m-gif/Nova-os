@@ -6,10 +6,11 @@
 
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { state, appMeta, rememberWindow, notify } from '../core/store.js';
+import { APPS, state, appMeta, rememberWindow, notify } from '../core/store.js';
 import { previewFor } from './app.js';
 import NovaMotion from '../motion/motion.js';
 import { draggable } from '../motion/gestures.js';
+import { isNativeLauncher, realAppIcon, realAppLabel, openWidgets } from '../core/launcher.js';
 
 const GROUP = { label: '✈️ رحلة الغردقة', apps: ['browser', 'notes'] };
 
@@ -20,6 +21,11 @@ export function mountCanvas(layer, ctx = {}) {
     h('h2', {}, 'NOVA CANVAS'),
     h('span', { class: 'pill', html: icon('layers', 'ico ico--sm') }),
     h('small', {}, 'مساحة ثنائية الأبعاد · الذاكرة المكانية'),
+    isNativeLauncher() ? h('button', {
+      class: 'pill canvas__widget-btn',
+      dataset: { nodrag: '1' },
+      onclick: () => openWidgets(),
+    }, '＋ ودجت') : null,
   );
   const foot = h('div', { class: 'canvas__foot' },
     h('div', { class: 'pill' }, 'اسحب نافذة لتحريكها · اضغط لفتحها · اسحب لأعلى بسرعة للإغلاق الجماعي'),
@@ -50,6 +56,10 @@ export function mountCanvas(layer, ctx = {}) {
 
     for (const w of state.windows) {
       const meta = appMeta(w.appId);
+      const real = !APPS[w.appId] && isNativeLauncher();
+      const face = real
+        ? h('img', { class: 'win__icon', src: realAppIcon(w.appId), alt: realAppLabel(w.appId), draggable: 'false' })
+        : h('span', { style: { color: meta.color }, html: icon(meta.icon, 'ico ico--sm') });
       const win = h('div', {
         class: 'win',
         dataset: { app: w.appId, drag: 'win', focus: w.appId === state.focusedApp ? '1' : '0' },
@@ -57,9 +67,9 @@ export function mountCanvas(layer, ctx = {}) {
         onclick: (e) => { if (!win.dataset.moved) ctx.onOpenApp?.(w.appId, win); },
       },
         h('div', { class: 'win__head' },
-          h('span', { style: { color: meta.color }, html: icon(meta.icon, 'ico ico--sm') }),
-          h('b', {}, meta.name),
-          h('small', {}, 'مفتوح'),
+          face,
+          h('b', {}, real ? realAppLabel(w.appId) : meta.name),
+          h('small', {}, real ? 'تطبيق' : 'مفتوح'),
         ),
         h('div', { class: 'win__body', dataset: { nodrag: '1' } }, previewFor(w.appId)),
       );

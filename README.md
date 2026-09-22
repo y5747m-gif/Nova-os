@@ -40,8 +40,10 @@ Two real paths — full guide in **`docs/06-install.md`**:
    offline after the first load. iPhone: open in Safari → Share → *Add to Home Screen*.
    > A build is **already published** for this repo: **Releases → `nova-os-latest.apk`**
    > (verified in CI: `os.nova.launcher`, v0.1.0, minSdk 26, 38 `assets/www` files inside).
-2. **As an Android APK (`android/`).** A real full-screen WebView shell (edge-to-edge insets,
-   hardware Back wired into NOVA's navigation, launcher entry, notification bridge, self-update).
+2. **As an Android APK (`android/`).** A **real launcher**: your installed apps with real icons,
+   one-tap default-Home setup wizard, live notifications in NOVA FLOW, usage-ranked suggestions,
+   contacts search, system widgets, deep shortcuts, your own wallpaper behind NOVA's glass,
+   edge-to-edge insets, hardware Back wired into NOVA's navigation, and self-update.
    CI builds it: **Actions → Build NOVA OS APK → Run workflow** →
    the APK appears under **Releases** as `nova-os-latest.apk`. The in-app **تحميل APK** button
    finds that asset automatically and, inside the app, downloads it and opens the system installer.

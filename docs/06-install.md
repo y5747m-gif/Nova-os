@@ -120,12 +120,35 @@ Prefer the command line without Android Studio? Set the SDK path in `android/loc
 sdk.dir=/path/to/Android/Sdk
 ```
 
-### 2.3 Make NOVA the home screen (optional)
+### 2.3 Make NOVA the home screen (one tap)
 
-After installing: **Settings → Apps → Default apps → Home app → NOVA OS**.
+On first launch NOVA opens a **setup wizard** that walks through everything below —
+or do it manually: **Settings → Apps → Default apps → Home app → NOVA OS**.
 Press Home — you land in NOVA's Dynamic Space. To leave it, pick another home app the same way;
-NOVA never hijacks anything and never auto-starts unless you enable *boot launch*
-(`NovaSystem.setBootLaunch(true)` from the app, or the debug bridge).
+NOVA never hijacks anything and never auto-starts unless you enable *boot launch*.
+
+### 2.4 Launcher permissions — what NOVA asks for and why
+
+NOVA is a real launcher (`os.nova.launcher`): your installed apps, icons,
+shortcuts, widgets and live notifications all work. Every grant is optional,
+asked in context from the setup wizard, and deep-links to the exact system screen:
+
+| Permission / access | System screen | Why NOVA wants it |
+| --- | --- | --- |
+| Default Home app (`ROLE_HOME` + `CATEGORY_HOME`) | system role dialog / Home settings | Home button opens NOVA; NOVA *is* the launcher |
+| Installed apps (`QUERY_ALL_PACKAGES` + `<queries>`) | install-time | list + launch your apps with real icons in CORE and Dynamic Space |
+| Notifications (`POST_NOTIFICATIONS`) | runtime dialog | NOVA's own update/event pings |
+| Notification access (`BIND_NOTIFICATION_LISTENER`) | Notification-access settings | **NOVA FLOW**: live notifications mirrored as quiet cards |
+| Usage access (`PACKAGE_USAGE_STATS`) | Usage-access settings | **NOVA INTELLIGENCE**: usage-ranked suggestions, on-device only |
+| Contacts (`READ_CONTACTS`) | runtime dialog | **NOVA FIND → people**: search contacts, tap to call |
+| Widgets (AppWidget host) | system picker + bind confirm | real system widgets on the NOVA canvas |
+| Wallpaper (`SET_WALLPAPER*`, media read) | — / picker | optional: your own wallpaper behind NOVA's glass |
+| Shortcuts (`INSTALL_SHORTCUT`) | install-time | deep shortcuts (long-press an app) |
+| Self-update (`REQUEST_INSTALL_PACKAGES`) | installer | download + install NOVA's next APK in place |
+| Boot (`RECEIVE_BOOT_COMPLETED`), vibration, audio-focus | install-time | update check, opt-in boot launch, haptics, media state |
+
+Nothing leaves the device: usage stats and contacts are read only to rank and
+search locally. Deny anything and NOVA keeps working with the demo layer.
 
 ## 3. The download button inside NOVA
 
@@ -158,10 +181,10 @@ safe-area padding driven by `--nv-inset-*` / `env(safe-area-inset-*)`.
 
 ## 5. Accessibility, permissions, privacy
 
-- Permissions the APK declares: `INTERNET` (update check), `POST_NOTIFICATIONS` (FLOW events),
-  `VIBRATE` (haptic set), `RECEIVE_BOOT_COMPLETED` (update check + opt-in boot launch),
-  `REQUEST_INSTALL_PACKAGES` (installing its own update). Nothing else — no storage, no location,
-  no camera, no contacts.
+- Permissions the APK declares: see §2.4 — the full launcher set (apps catalogue, Home role,
+  notification-listener, usage stats, contacts, widgets, wallpaper, shortcuts, self-update).
+  No camera, no microphone, no SMS, no call logs; location and Bluetooth are declared only for
+  future context features and are never requested today.
 - The WebView is deliberately locked down: no file access, no content access, mixed content blocked,
   Safe Browsing on, algorithmic darkening off (NOVA has its own Dark/Paper), external links open in
   the real browser.
