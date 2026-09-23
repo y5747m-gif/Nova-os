@@ -9,7 +9,7 @@
 
 import { h, fmtDate } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { APPS, appMeta, state, allAppIds } from '../core/store.js';
+import { APPS, appMeta, state, allAppIds, loadJSON, saveJSON, PERSIST } from '../core/store.js';
 import NovaMotion, { clamp } from '../motion/motion.js';
 import { stagger as staggerMs } from '../motion/config.js';
 import {
@@ -22,6 +22,9 @@ const RING_FALLBACK = ['whatsapp', 'gallery', 'music'];
 /** Rotation cursor — the ring walks through the whole universe. */
 let ringShift = 0;
 let cardShift = 0;
+
+/** Pinned cards freeze in place (docs/01 §2) — persisted on the device. */
+let pinned = loadJSON(PERSIST.pinned, []) || [];
 
 /** Universe = every app there is (demo catalogue or the real phone). */
 function universeIds() {
@@ -61,11 +64,15 @@ const RING_RADIUS = 68;
 
 function demoSuggestions() {
   const uni = universeIds();
-  if (uni.length) return rotateFrom(uni, cardShift, 10);
-  return ['notes', 'maps', 'whatsapp', 'browser', 'gallery', 'music', 'calendar', 'phone'];
+  const rotating = uni.length ? rotateFrom(uni, cardShift, 10)
+    : ['notes', 'maps', 'whatsapp', 'browser', 'gallery', 'music', 'calendar', 'phone'];
+  // pinned first (frozen), then the rotating suggestions without duplicates
+  const head = pinned.filter((id) => !isNativeLauncher() || APPS[id]);
+  return [...head, ...rotating.filter((id) => !head.includes(id))].slice(0, 12);
 }
 
-/** The four cards that matter right now — real packages in the APK. */
+/** The four cards that matter right now — real packages in the APK.
+ *  Pinned cards always lead and never drift away with the rotation. */
 function suggestions() {
   if (isNativeLauncher()) {
     const top = topRealApps(8);
@@ -76,7 +83,11 @@ function suggestions() {
       if (ids.length >= 4) break;
       if (!ids.includes(a.p)) ids.push(a.p);
     }
-    if (ids.length) return ids.slice(0, 4);
+    if (ids.length) {
+      const pinnedReal = pinned.filter((p) => ids.includes(p) || all.some((a) => a.p === p));
+      const rest = [...pinnedReal, ...ids].filter((v, i, arr) => arr.indexOf(v) === i);
+      return rest.slice(0, 6);
+    }
   }
   return demoSuggestions();
 }
@@ -315,26 +326,64 @@ export function mountHome(layer, ctx = {}) {
   }
 
   /* ── suggestion cards ─────────────────────────────────────── */
+  function togglePin(appId) {
+    const i = pinned.indexOf(appId);
+    if (i >= 0) pinned.splice(i, 1);
+    else pinned.push(appId);
+    saveJSON(PERSIST.pinned, pinned);
+    buildCards();
+    animateCards();
+    NovaMotion.emit(i >= 0 ? 'tick' : 'success');
+    ctx.toast?.(i >= 0 ? 'أُلغي تثبيت البطاقة' : 'ثُبّتت البطاقة — مكانها محفوظ دائمًا');
+  }
+
+  function bindCardPress(el, appId) {
+    let timer = null;
+    let fired = false;
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    el.addEventListener('pointerdown', () => {
+      fired = false;
+      cancel();
+      timer = setTimeout(() => { timer = null; fired = true; togglePin(appId); }, 550);
+    });
+    el.addEventListener('pointerup', cancel);
+    el.addEventListener('pointercancel', cancel);
+    el.addEventListener('pointerleave', cancel);
+    el.addEventListener('click', (e) => {
+      if (fired) { e.stopPropagation(); fired = false; return; }
+      ripple(e);
+      ctx.onOpenApp?.(appId, el);
+    }, true); // capture: run before the original open handler and swallow the press
+  }
+
   function buildCards() {
     cards.replaceChildren();
     cardEls.clear();
     const ids = suggestions();
     ids.forEach((appId) => {
       const meta = metaFor(appId);
+      const isPinned = pinned.includes(appId);
       const face = meta.real
         ? h('img', { class: 'app-card__icon', src: realAppIcon(appId), alt: meta.name, draggable: 'false' })
         : h('span', { class: 'ico-wrap', html: icon(meta.icon, 'ico') });
       const el = h('button', {
-        class: meta.real ? 'card app-card app-card--real' : 'card app-card',
+        class: [
+          'card', 'app-card',
+          meta.real ? 'app-card--real' : '',
+          isPinned ? 'app-card--pinned' : '',
+        ].filter(Boolean).join(' '),
         dataset: { app: appId },
-        onclick: (e) => { ripple(e); ctx.onOpenApp?.(appId, el); },
+        title: isPinned ? 'مثبّتة — اضغط مطولاً لإلغاء التثبيت' : 'اضغط مطولاً لتثبيت البطاقة',
       },
+        isPinned ? h('span', { class: 'app-card__pin', html: icon('pin', 'ico ico--sm') }) : null,
         face,
         h('span', { class: 'meta' }, h('b', {}, meta.name), h('span', {}, meta.sub)),
         h('span', { class: 'go', html: icon('chevron', 'ico ico--sm') }),
       );
       el.style.setProperty('--nv-accent', meta.color);
       el.style.opacity = '0';
+      // original click (open) replaced by the press-aware binding
+      bindCardPress(el, appId);
       cards.append(el);
       cardEls.set(appId, el);
     });

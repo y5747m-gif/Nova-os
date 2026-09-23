@@ -20,8 +20,9 @@
 | Split Flow + system-level drag & drop | ✅ |
 | NOVA CONTROL (radial) + lock screen + AOD | ✅ |
 | Sound set + haptics language | ✅ (WebAudio synth) |
-| Kotlin/Compose port of `NovaMotion` | ⏳ Phase 2 start |
+| Kotlin/Compose port of `NovaMotion` | ⏳ Phase 2 start → **springs + tokens + profiles + engine ✅** (`android/app/src/main/java/os/nova/motion/`, golden-curve tested), **Compose shell ⏳** |
 | Installable web app (PWA) + Android APK shell | ✅ `android/`, `docs/06-install.md` |
+| Desktop compatibility (full-window shell, deck overlay, dock, keyboard/mouse parity) + feature pack 0.9 (window controls, wheel zoom, DND, real editors, terminal, pinning) | ✅ `prototype/`, `docs/01` §21 |
 
 **Exit criteria**
 
@@ -94,9 +95,12 @@ met on-device, and Path-A and Path-B produce visually identical motion (same spe
 
 ## Immediate next steps (after this repo's Phase 1)
 
-1. Port `NovaMotion` (springs + tokens + profiles) to Kotlin and unit-test against the same
-   golden curves used by the web engine. (The APK shell already proves the packaging, insets,
-   Back routing, notifications and self-update paths — the Compose port replaces its rendering.)
+1. ~~Port `NovaMotion` (springs + tokens + profiles) to Kotlin and unit-test against the same
+   golden curves used by the web engine.~~ **Done**: `os.nova.motion` in `android/`, locked to the
+   JS engine by `tools/golden-curves.mjs` → `golden-curves.json` → `NovaMotionGoldenTest`
+   (runs in `npm run check:port` + `gradle testDebugUnitTest` in CI). The APK shell already proves
+   the packaging, insets, Back routing, notifications and self-update paths — the Compose port
+   replaces its rendering.
 2. Build a 6-screen Compose shell: Lock, Dynamic Space, Surface, CORE, FLOW, CANVAS.
 3. Instrument the 12 golden flows with frame-time histograms on a Pixel 6a-class device.
 4. Run the first 5-person usability study (send a photo, resume a workspace, defer an event).

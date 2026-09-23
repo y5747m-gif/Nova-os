@@ -24,21 +24,28 @@ export function mountFlow(layer, ctx = {}) {
   const liveTag = h('span', { class: 'flow__live hidden' }, '● مباشر');
   head.append(liveTag);
   const quiet = h('p', { class: 'flow__quiet' }, 'تم تجميع 6 عروض في مجموعة هادئة · تُفتح عند الطلب');
+  const dndBar = h('div', { class: 'flow__dnd hidden' },
+    h('span', { html: icon('moon', 'ico ico--sm') }),
+    h('span', {}, 'عدم الإزعاج مفعّل — الأحداث تصلك بصمت هنا'),
+  );
 
   const el = h('div', { class: 'panel panel--flow' },
     h('div', { class: 'panel__grip' }, h('i')),
-    h('div', { class: 'flow' }, head, list, quiet),
+    h('div', { class: 'flow' }, head, dndBar, list, quiet),
   );
   el.style.transform = 'translate3d(0, -110%, 0)';
   el.style.opacity = '0';
   layer.append(el);
 
   function cardFor(evt) {
-    const card = h('div', { class: 'event-card', dataset: { drag: 'event' } },
+    const card = h('div', {
+      class: evt.quiet ? 'event-card event-card--quiet' : 'event-card',
+      dataset: { drag: 'event' },
+    },
       h('div', { class: 'event-card__top' },
         h('span', { style: { color: evt.color }, html: icon(evt.icon, 'ico ico--sm') }),
         h('span', { class: 'who' }, evt.who),
-        h('small', {}, 'الآن'),
+        h('small', {}, evt.quiet ? 'صامت' : 'الآن'),
       ),
       h('div', { class: 'event-card__body' }, evt.body),
       h('div', { class: 'event-card__acts' },
@@ -128,6 +135,7 @@ export function mountFlow(layer, ctx = {}) {
     const evts = state.events;
     const live = isNativeLauncher() ? liveNotifications() : [];
     liveTag.classList.toggle('hidden', !live.length);
+    dndBar.classList.toggle('hidden', !state.dnd);
 
     const kids = [];
     if (live.length) {

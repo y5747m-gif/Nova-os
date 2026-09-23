@@ -5,20 +5,26 @@
 
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
+import { state } from '../core/store.js';
+import { soundOn } from '../core/sound.js';
+import { nova } from '../motion/config.js';
 import NovaMotion from '../motion/motion.js';
 import { draggable } from '../motion/gestures.js';
 
 const NODES = [
-  { id: 'wifi',     label: 'Wi-Fi',    icon: 'wifi',      value: 1,  binary: true,  color: '#7dd3fc' },
-  { id: 'bt',       label: 'بلوتوث',   icon: 'bluetooth', value: 0,  binary: true,  color: '#6c5ce7' },
-  { id: 'sound',    label: 'الصوت',    icon: 'sound',     value: .7, binary: false, color: '#34d399' },
-  { id: 'torch',    label: 'الكشاف',   icon: 'torch',     value: 0,  binary: true,  color: '#f5a524' },
-  { id: 'airplane', label: 'طيران',    icon: 'airplane',  value: 0,  binary: true,  color: '#ff6b9a' },
+  { id: 'wifi',     label: 'Wi-Fi',    icon: 'wifi',      value: 1, binary: true,  color: '#7dd3fc' },
+  { id: 'bt',       label: 'بلوتوث',   icon: 'bluetooth', value: 0, binary: true,  color: '#6c5ce7' },
+  { id: 'sound',    label: 'الصوت',    icon: 'sound',     value: soundOn() ? .7 : 0, binary: true, color: '#34d399' },
+  { id: 'dnd',      label: 'عدم الإزعاج', icon: 'moon',   value: state.dnd ? 1 : 0, binary: true, color: '#a78bfa' },
+  { id: 'torch',    label: 'الكشاف',   icon: 'torch',     value: 0, binary: true,  color: '#f5a524' },
+  { id: 'airplane', label: 'طيران',    icon: 'airplane',  value: 0, binary: true,  color: '#ff6b9a' },
+  { id: 'reduce',   label: 'حركة أقل', icon: 'motion',    value: nova.profile === 'reduced' ? 1 : 0, binary: true, instant: true, action: 'reduce', color: '#e2e8f0' },
   { id: 'battery',  label: 'موفّر',    icon: 'battery',   value: .6, binary: false, color: '#22d3ee' },
-  { id: 'look',     label: 'المظهر',   icon: 'settings',  value: 1,  binary: true,  instant: true, color: '#a78bfa' },
+  { id: 'look',     label: 'المظهر',   icon: 'settings',  value: 1, binary: true,  instant: true, action: 'customize', color: '#a78bfa' },
 ];
 
 const SECTOR = 0.36; // radians of travel per node
+const RING_R = 124;  // px — room for the nine nodes
 
 export function mountControl(layer, ctx = {}) {
   const ring = h('div', { class: 'control__ring' }, h('div', { class: 'circle' }));
@@ -51,7 +57,7 @@ export function mountControl(layer, ctx = {}) {
     const entry = { def, node, angle: base, base };
     nodes.push(entry);
     entry.layout = (turn = 0) => {
-      const pt = polar(entry.angle, 116);
+      const pt = polar(entry.angle, RING_R);
       node.style.transform = `translate3d(${pt.x.toFixed(1)}px, ${pt.y.toFixed(1)}px, 0) scale(${(0.9 + 0.1 * entry.def.value).toFixed(3)})`;
       node.dataset.on = entry.def.value > 0.5 ? '1' : '0';
     };
@@ -97,8 +103,14 @@ export function mountControl(layer, ctx = {}) {
 
     node.addEventListener('click', () => {
       if (def.instant) {
-        // an action node: opens the customization room instead of toggling
+        // an action node: reduce-motion quick switch, or the customization room
         ctx.emit?.('success');
+        if (def.action === 'reduce') {
+          def.value = def.value > 0.5 ? 0 : 1;
+          entry.layout();
+          ctx.onAction?.('reduce', def.value === 1);
+          return;
+        }
         ctx.onCustomize?.();
         return;
       }
@@ -137,7 +149,7 @@ export function mountControl(layer, ctx = {}) {
         NovaMotion.spring({
           from: 0.6, to: 1, springName: 'ORBIT',
           onUpdate: (v) => {
-            const p = polar(n.angle, 116 * Math.min(1.06, v));
+            const p = polar(n.angle, RING_R * Math.min(1.06, v));
             n.node.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) scale(${v.toFixed(3)})`;
           },
         });

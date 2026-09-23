@@ -9,6 +9,7 @@ import { h, clear, fmtTime } from './core/dom.js';
 import { icon } from './core/icons.js';
 import {
   APPS, appMeta, state, pushEvent, makeEvent, deferEvent, notify, rememberWindow, subscribe,
+  setDnd,
 } from './core/store.js';
 import {
   isNativeLauncher, launchRealApp,
@@ -23,7 +24,7 @@ import {
   setProfile, setTheme, setMode, setAccent, nova, PROFILES, THEMES, ACCENTS,
   onConfigChange, token, springConfig, currentOvershoot, blurPx,
 } from './motion/config.js';
-import { initAudio, playSound } from './core/sound.js';
+import { initAudio, playSound, soundOn, setSoundOn } from './core/sound.js';
 import { NOVA_VERSION } from './core/version.js';
 import {
   createInstaller, registerServiceWorker, checkForUpdate, applyUpdate, isStandalone,
@@ -37,6 +38,7 @@ import { mountCore } from './surfaces/core.js';
 import { mountFlow } from './surfaces/flow.js';
 import { createOrb } from './surfaces/orb.js';
 import { mountCanvas } from './surfaces/canvas.js';
+import { mountDock } from './surfaces/dock.js';
 import { mountControl } from './surfaces/control.js';
 import { mountLock } from './surfaces/lock.js';
 import { buildSplit } from './surfaces/split.js';
@@ -74,14 +76,32 @@ try {
 } catch { fx = null; }
 
 /* ── status bar ────────────────────────────────────────────────── */
+/* real battery when the platform offers it (desktop Chrome/Android), demo 72% otherwise */
+let batteryPct = 72;
+let batteryCharging = false;
 function paintStatus() {
   const privacy = '<span class="dot" title="الكاميرا/الموقع مستخدَمان الآن">●</span>';
+  const charge = batteryCharging ? icon('bolt', 'ico ico--sm') : icon('battery', 'ico ico--sm');
   statusbar.innerHTML = `
     <span>${fmtTime()}</span>
-    <span class="status__right">${privacy}<span>72%</span>${icon('battery', 'ico ico--sm')}</span>`;
+    <span class="status__right">${privacy}<span>${batteryPct}%</span>${charge}</span>`;
 }
 paintStatus();
 setInterval(paintStatus, 20000);
+try {
+  if (typeof navigator.getBattery === 'function') {
+    navigator.getBattery().then((b) => {
+      const sync = () => {
+        batteryPct = Math.round(b.level * 100);
+        batteryCharging = !!b.charging;
+        paintStatus();
+      };
+      b.addEventListener?.('levelchange', sync);
+      b.addEventListener?.('chargingchange', sync);
+      sync();
+    }).catch(() => { /* demo battery */ });
+  }
+} catch { /* demo battery */ }
 
 /* ── toast + emit wiring (one event → motion + sound + haptic) ─── */
 let toastTimer = null;
@@ -102,6 +122,7 @@ window.addEventListener('pointerdown', () => initAudio(), { once: true });
 /* ── surfaces ──────────────────────────────────────────────────── */
 const ui = {
   home: mountHome(L.home, {
+    toast,
     onOpenApp: (appId, el) => openApp(appId, el),
     onTask: () => openPanel('flow'),
     onAllApps: () => {
@@ -153,6 +174,16 @@ ui.install = createInstaller({
   emit: (k) => NovaMotion.emit(k),
 });
 
+/* the computer's dock — open apps + favourites, desktop shell only (CSS) */
+ui.dock = mountDock(L.overlay, {
+  onOpenApp: (appId, el) => openApp(appId, el),
+  onAllApps: () => {
+    if (state.surface === 'lock') return;
+    openPanel('core');
+    setTimeout(() => { try { ui.core.showAll(); } catch { /* ignore */ } }, 80);
+  },
+});
+
 /* first-run wizard (native shell only — browsers never see it) */
 ui.setup = mountSetup(L.overlay, {
   toast,
@@ -189,7 +220,25 @@ ui.control = mountControl(L.panels, {
   onCore: () => { closePanel(); setTimeout(() => openPanel('core'), 120); },
   onClose: () => closePanel(),
   emit: (k) => NovaMotion.emit(k),
-  onToggle: (def, on) => toast(`${def.label}: ${on ? 'مُشغّل' : 'مُطفأ'}`),
+  onToggle: (def, on) => {
+    if (def.id === 'dnd') {
+      setDnd(on);
+      ui.flow.render();
+      toast(on ? 'عدم الإزعاج — الأحداث تصلك بصمت' : 'عادت الأحداث إلى وضعها الطبيعي');
+    } else if (def.id === 'sound') {
+      setSoundOn(on);
+      toast(on ? 'الصوت مسموع' : 'الصوت صامت');
+    } else {
+      toast(`${def.label}: ${on ? 'مُشغّل' : 'مُطفأ'}`);
+    }
+  },
+  onAction: (action, on) => {
+    if (action === 'reduce') {
+      setProfile(on ? 'reduced' : 'balanced');
+      refreshDeck();
+      toast(on ? 'Reduced Motion — تلاشي فقط' : 'عادت الحركة الكاملة');
+    }
+  },
   onValueChange: (def) => { },
   onCustomize: () => {
     closePanel(true);
@@ -215,6 +264,7 @@ subscribe((s, what) => {
     if (s.orb?.event && !ui.orb.active) ui.orb.show(s.orb.event);
     if (state.panel === 'flow') ui.flow.render();
   }
+  if (what === 'dnd' && state.panel === 'flow') ui.flow.render();
   if (what === 'windows' && state.surface === 'canvas') ui.canvas.render();
 });
 
@@ -281,6 +331,8 @@ function appCtx(appId, opts) {
     emit: (k) => NovaMotion.emit(k),
     onMedia: (v) => { state.mediaPlaying = v; },
     onCollapse: () => collapseToCanvas(),
+    onHome: () => finishApp('home'),
+    openApp: (nextId, el, o) => openApp(nextId, el, o || {}),
     onStagedSent: () => { state.staged = null; },
   };
 }
@@ -366,6 +418,7 @@ function mountAppSurface(appId, from, opts = {}, back = 'home') {
 
   state.surface = 'app';
   state.focusedApp = appId;
+  notify('focus'); // the dock shows what's focused
   appCtl = { appId, el, host, morph };
   paintCaption();
 }
@@ -907,6 +960,70 @@ attachGestures(screen, {
 /* lock: touch brings the tools in */
 screen.addEventListener('pointerdown', () => { if (state.surface === 'lock') ui.lock.touched(); });
 
+/* ── keyboard help (the desktop's map, `?`) ────────────────────── */
+const SHORTCUTS = [
+  ['K', 'NOVA CORE — كل التطبيقات والبحث'],
+  ['F', 'NOVA FLOW — الأحداث'],
+  ['C', 'NOVA CANVAS — المساحة'],
+  ['T', 'NOVA CONTROL — التحكّم الدائري'],
+  ['E', 'حدث جديد'], ['M', 'وسائط تشغّال'],
+  ['R', 'استرجاع آخر مساحة'], ['P', 'زر الطاقة'],
+  ['L', 'قفل الشاشة'], ['S', 'إغلاق جماعي'],
+  ['I', 'تثبيت NOVA على جهازك'], ['W', 'الإعدادات'],
+  ['N', 'عدم الإزعاج'], ['D', 'حاسوب ↔ هاتف'],
+  ['U', 'تطبيق التحديث'], ['?', 'هذه القائمة'],
+  ['Esc', 'رجوع تفاعلي'],
+];
+let helpEl = null;
+
+function closeHelp() {
+  if (!helpEl) return;
+  const el = helpEl;
+  helpEl = null;
+  NovaMotion.emit('close');
+  NovaMotion.spring({
+    from: 1, to: 0, springName: 'SOFT',
+    onUpdate: (v) => {
+      if (!el.isConnected) return;
+      el.style.opacity = String(v);
+      el.style.transform = `scale(${(0.96 + 0.04 * v).toFixed(4)})`;
+    },
+    onDone: () => el.remove(),
+  });
+}
+
+function toggleHelp() {
+  if (helpEl) { closeHelp(); return; }
+  if (state.surface === 'lock') return;
+  helpEl = h('div', { class: 'help', dataset: { nodrag: '1' } },
+    h('div', { class: 'help__card' },
+      h('div', { class: 'help__head' },
+        h('b', {}, 'اختصارات NOVA'),
+        h('button', { class: 'help__x', dataset: { nodrag: '1' }, html: icon('close', 'ico ico--sm'), onclick: () => closeHelp() }),
+      ),
+      h('div', { class: 'help__grid' },
+        ...SHORTCUTS.map(([key, label]) => h('div', { class: 'help__row' },
+          h('kbd', { class: 'kbd' }, key),
+          h('span', {}, label),
+        )),
+      ),
+      h('p', { class: 'help__note' }, 'وكل الإيماءات شغّال بالماوس: الحواف للرجوع · الأسفل CORE · الأعلى FLOW'),
+    ),
+  );
+  const el = helpEl; // capture: closeHelp() may null helpEl while this spring ticks
+  el.style.opacity = '0';
+  L.overlay.append(el);
+  NovaMotion.emit('open');
+  NovaMotion.spring({
+    from: 0, to: 1, springName: 'SOFT',
+    onUpdate: (v) => {
+      if (!el.isConnected) return; // closed mid-flight — never touch a detached node
+      el.style.opacity = String(v);
+      el.style.transform = `scale(${(0.96 + 0.04 * v).toFixed(4)})`;
+    },
+  });
+}
+
 /* ── caption ───────────────────────────────────────────────────── */
 function paintCaption() {
   const map = {
@@ -1026,6 +1143,18 @@ setInterval(() => {
 
 function runAction(id) {
   switch (id) {
+    case 'control': openPanel('control'); break;
+    case 'dnd': {
+      setDnd(!state.dnd);
+      ui.flow.render();
+      const node = document.querySelector('.control__node[data-node="dnd"]');
+      if (node) node.dataset.on = state.dnd ? '1' : '0';
+      toast(state.dnd ? 'عدم الإزعاج — الأحداث تصلك بصمت' : 'عادت الأحداث إلى وضعها الطبيعي');
+      NovaMotion.emit(state.dnd ? 'defer' : 'success');
+      break;
+    }
+    case 'help': toggleHelp(); break;
+    case 'shell': setShell(document.body.dataset.shell === 'desktop' ? 'web' : 'desktop'); break;
     case 'event': {
       const evt = makeEvent();
       const level = pushEvent(evt);
@@ -1046,7 +1175,6 @@ function runAction(id) {
     case 'canvas': closePanel(true); ui.canvas.render(); showCanvas(); break;
     case 'flow': openPanel('flow'); break;
     case 'core': openPanel('core'); break;
-    case 'control': openPanel('control'); break;
     case 'widgets': {
       if (isNativeLauncher()) {
         try { window.NovaSystem.openWidgets(); } catch { /* ignore */ }
@@ -1112,10 +1240,16 @@ function runAction(id) {
 
 /* ── keyboard shortcuts (desktop) ──────────────────────────────── */
 window.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
-  const map = { k: 'core', f: 'flow', c: 'canvas', e: 'event', m: 'media', p: 'power', l: 'lock', s: 'sweep', r: 'resume', i: 'install', w: 'settings' };
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (e.key === '?') { e.preventDefault(); toggleHelp(); return; }
+  const map = {
+    k: 'core', f: 'flow', c: 'canvas', e: 'event', m: 'media', p: 'power',
+    l: 'lock', s: 'sweep', r: 'resume', i: 'install', w: 'settings',
+    t: 'control', n: 'dnd', d: 'shell',
+  };
   const action = map[e.key.toLowerCase()];
-  if (action) { e.preventDefault(); runAction(action); }
+  if (action && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); runAction(action); }
   if (e.key === 'Escape') NovaBack();
 });
 
@@ -1173,11 +1307,61 @@ pushEvent(makeEvent({ who: 'التقويم', body: 'اجتماع الفريق ب
    ══════════════════════════════════════════════════════════════ */
 const params = new URLSearchParams(location.search);
 const shellParam = params.get('shell');
-const isShellApp = shellParam === 'app'
+const forceDesktop = shellParam === 'desktop';
+const isShellApp = !forceDesktop && (shellParam === 'app'
   || /NovaOS/i.test(navigator.userAgent)
-  || (shellParam !== 'web' && isStandalone());
-document.body.dataset.shell = isShellApp ? 'app' : 'web';
+  || (shellParam !== 'web' && isStandalone()));
+const wantsDesktop = !isShellApp && (forceDesktop
+  || (shellParam !== 'web' && shellParam !== 'app' && (window.innerWidth || 0) >= 1200));
+document.body.dataset.shell = isShellApp ? 'app' : wantsDesktop ? 'desktop' : 'web';
 document.body.dataset.version = NOVA_VERSION;
+document.body.dataset.deck = 'closed';
+
+/* flip between «حاسوب» and «هاتف» without a reload (hotkey D / desk tools) */
+function shellMode() { return document.body.dataset.shell === 'desktop' ? 'desktop' : 'web'; }
+
+function setShell(mode) {
+  if (isShellApp) return;
+  const next = mode === 'desktop' ? 'desktop' : 'web';
+  document.body.dataset.shell = next;
+  try {
+    const url = new URL(location.href);
+    if (next === 'desktop') url.searchParams.set('shell', 'desktop');
+    else url.searchParams.delete('shell');
+    history.replaceState(history.state, '', url);
+  } catch { /* ignore */ }
+  if (next !== 'desktop') setDeck(-1, true);
+  toast(next === 'desktop' ? 'وضع الحاسوب — NOVA تملأ النافذة' : 'وضع الهاتف — شاشة داخل إطار', 2400);
+}
+
+/* the control deck becomes an overlay panel on a computer */
+const deckEl = document.getElementById('deck');
+let deckP = -1;
+function setDeck(p, force = false) {
+  if (!deckEl) return;
+  if (!force && shellMode() !== 'desktop') return;
+  deckP = clamp(p);
+  document.body.dataset.deck = deckP > -0.5 ? 'open' : 'closed';
+  if (shellMode() !== 'desktop') { deckEl.style.transform = ''; deckEl.style.pointerEvents = ''; return; }
+  deckEl.style.transform = `translateX(${(deckP * 110).toFixed(1)}%)`;
+  deckEl.style.pointerEvents = deckP > -0.4 ? 'auto' : 'none';
+}
+function toggleDeck() {
+  if (shellMode() !== 'desktop') return;
+  NovaMotion.spring({
+    from: deckP, to: deckP > -0.5 ? -1 : 0, springName: 'SOFT',
+    onUpdate: setDeck,
+  });
+}
+if (wantsDesktop) setDeck(-1, true);
+
+/* floating tools for the computer shell: deck · phone view · shortcuts */
+const deskTools = h('div', { class: 'desk-tools', dataset: { nodrag: '1' } },
+  h('button', { class: 'desk-tools__btn', dataset: { tool: 'deck' }, onclick: () => toggleDeck() }, 'لوحة NOVA'),
+  h('button', { class: 'desk-tools__btn', dataset: { tool: 'phone' }, onclick: () => setShell('web') }, 'عرض الهاتف'),
+  h('button', { class: 'desk-tools__btn', dataset: { tool: 'help' }, onclick: () => toggleHelp() }, 'الاختصارات ؟'),
+);
+document.querySelector('.stage')?.append(deskTools);
 // who is running us? the Android shell reports its own insets; an installed
 // iOS web app has to ask the OS through env(safe-area-inset-*) instead
 document.body.dataset.platform =
@@ -1339,6 +1523,7 @@ if (isNativeLauncher()) {
 function NovaBack() {
   if (ui.setup?.isOpen) { ui.setup.close(); return true; }
   if (ui.install?.isOpen) { ui.install.close(); return true; }
+  if (helpEl) { closeHelp(); return true; }
   if (ui.core?.closePop?.()) return true;   // an app's long-press popup closes first
   const power = document.querySelector('.power');
   if (power) { power.remove(); NovaMotion.emit('close'); return true; }
@@ -1372,4 +1557,5 @@ window.NOVA = {
   checkForUpdate, applyUpdate, isStandalone,
   wallpaper: { set: setWallpaper, id: wallpaperId, all: WALLPAPERS },
   back: NovaBack, goHome: window.NovaGoHome,
+  shell: shellMode, setShell, toggleHelp, toggleDeck, dnd: () => state.dnd, setDnd,
 };

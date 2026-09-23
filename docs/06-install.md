@@ -107,8 +107,9 @@ Requirements: **JDK 17** and an Android SDK with **API 34 platform + build-tools
 # 1. stage the web experience into the app's assets (also: npm run apk:assets)
 bash tools/stage-assets.sh
 
-# 2. build
+# 2. build (testDebugUnitTest replays the NOVA MOTION golden curves first — CI does the same)
 cd android
+gradle testDebugUnitTest         # the Kotlin motion engine vs the JS reference
 gradle assembleDebug            # or: ./gradlew assembleDebug once a wrapper exists
 #    with Android Studio: open the `android/` folder and press Run
 

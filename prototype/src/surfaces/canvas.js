@@ -8,11 +8,18 @@ import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { APPS, state, appMeta, rememberWindow, notify } from '../core/store.js';
 import { previewFor } from './app.js';
-import NovaMotion from '../motion/motion.js';
+import NovaMotion, { clamp } from '../motion/motion.js';
 import { draggable } from '../motion/gestures.js';
 import { isNativeLauncher, realAppIcon, realAppLabel, openWidgets } from '../core/launcher.js';
 
 const GROUP = { label: '✈️ رحلة الغردقة', apps: ['browser', 'notes'] };
+
+/** Close + restore state used by the window controls (desktop affordances). */
+function closeWindow(ctx, appId) {
+  state.windows = state.windows.filter((x) => x.appId !== appId);
+  ctx.emit?.('close');
+  notify('windows');
+}
 
 export function mountCanvas(layer, ctx = {}) {
   const grid = h('div', { class: 'canvas__grid' });
@@ -38,6 +45,7 @@ export function mountCanvas(layer, ctx = {}) {
   layer.append(el);
 
   let pan = { x: 0, y: 0 };
+  let zoom = 1;
   const winEls = new Map();
 
   function render() {
@@ -70,13 +78,29 @@ export function mountCanvas(layer, ctx = {}) {
           face,
           h('b', {}, real ? realAppLabel(w.appId) : meta.name),
           h('small', {}, real ? 'تطبيق' : 'مفتوح'),
+          h('button', {
+            class: 'win__btn win__btn--max', dataset: { nodrag: '1' },
+            title: 'تكبير / استعادة', html: icon('maximize', 'ico ico--sm'),
+            onclick: (e) => { e.stopPropagation(); toggleMax(win); },
+          }),
+          h('button', {
+            class: 'win__btn win__btn--close', dataset: { nodrag: '1' },
+            title: 'إغلاق', html: icon('close', 'ico ico--sm'),
+            onclick: (e) => { e.stopPropagation(); closeWindow(ctx, w.appId); },
+          }),
         ),
         h('div', { class: 'win__body', dataset: { nodrag: '1' } }, previewFor(w.appId)),
       );
 
+      const head = win.querySelector('.win__head');
+      head.addEventListener('dblclick', (e) => { e.stopPropagation(); toggleMax(win); });
+
       draggable(win, {
         axis: 'xy',
-        onStart: () => { win.dataset.moved = ''; win.style.zIndex = '5'; ctx.emit?.('tick'); },
+        onStart: () => {
+          if (win.dataset.max === '1') unmaximize(win, false); // a dragged maximized window snaps free first
+          win.dataset.moved = ''; win.style.zIndex = '5'; ctx.emit?.('tick');
+        },
         onMove: (_e, d) => {
           win.dataset.moved = '1';
           const nx = w.x + d.dx, ny = w.y + d.dy;
@@ -119,19 +143,93 @@ export function mountCanvas(layer, ctx = {}) {
     engage: 6,
     onMove: (_e, d) => {
       pan.x = d.dx; pan.y = d.dy;
-      space.style.transform = `translate3d(${pan.x}px, ${pan.y}px, 0)`;
-      grid.style.transform = `translate3d(${pan.x * 0.35}px, ${pan.y * 0.35}px, 0)`;
+      applySpace();
     },
     onEnd: () => {
       // snap back into a comfortable range, with physics
       NovaMotion.spring({
         from: pan.y, to: Math.max(-140, Math.min(60, pan.y)), springName: 'HEAVY',
-        onUpdate: (v) => { space.style.transform = `translate3d(${pan.x}px, ${v.toFixed(1)}px, 0)`; },
+        onUpdate: (v) => { pan.y = v; applySpace(); },
       });
     },
   });
 
-  el.addEventListener('dblclick', () => sweep());
+  /* ── wheel zoom — computers scroll, thumbs pinch (desktop) ──── */
+  el.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoom = clamp(zoom * (1 - e.deltaY * 0.0012), 0.6, 1.5);
+    applySpace();
+  }, { passive: false });
+
+  /* one transform for space + grid: pan × zoom, origin = centre */
+  function applySpace() {
+    el.dataset.zoom = zoom.toFixed(2);
+    space.style.transform = `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`;
+    grid.style.transform = `translate3d(${pan.x * 0.35}px, ${pan.y * 0.35}px, 0) scale(${zoom})`;
+  }
+
+  function resetZoom() {
+    if (Math.abs(zoom - 1) < 0.01) return;
+    NovaMotion.spring({
+      from: zoom, to: 1, springName: 'SOFT',
+      onUpdate: (v) => { zoom = v; applySpace(); },
+    });
+  }
+
+  /* ── maximize: transform-only, physics on toggle (docs/02 §4) ── */
+  function maxGeometry(win) {
+    const r = win.getBoundingClientRect();
+    const cr = el.getBoundingClientRect();
+    const left = parseFloat(win.style.left) || 0;
+    const top = parseFloat(win.style.top) || 0;
+    const k = Math.min((cr.width - 48) / Math.max(1, r.width), (cr.height - 150) / Math.max(1, r.height), 3);
+    const dx = cr.width / 2 - (left + r.width / 2);
+    const dy = (cr.height - 70) / 2 - (top + r.height / 2);
+    return { dx, dy, k: Math.max(1, k) };
+  }
+
+  function toggleMax(win) {
+    if (win.dataset.max === '1') unmaximize(win, true);
+    else {
+      const { dx, dy, k } = maxGeometry(win);
+      win.dataset.max = '1';
+      win.dataset.maxdx = String(dx);
+      win.dataset.maxdy = String(dy);
+      win.dataset.maxk = String(k);
+      win.classList.add('win--max');
+      ctx.emit?.('success');
+      NovaMotion.spring({
+        from: 0, to: 1, springName: 'HEAVY',
+        onUpdate: (v) => {
+          win.style.transform = `translate3d(${(dx * v).toFixed(1)}px, ${(dy * v).toFixed(1)}px, 0) scale(${(1 + (k - 1) * v).toFixed(4)})`;
+        },
+      });
+    }
+  }
+
+  function unmaximize(win, animate) {
+    if (win.dataset.max !== '1') return;
+    const dx = Number(win.dataset.maxdx || 0);
+    const dy = Number(win.dataset.maxdy || 0);
+    const k = Number(win.dataset.maxk || 1);
+    win.dataset.max = '0';
+    win.classList.remove('win--max');
+    const settle = (v) => {
+      win.style.transform = v <= 0.01
+        ? ''
+        : `translate3d(${(dx * v).toFixed(1)}px, ${(dy * v).toFixed(1)}px, 0) scale(${(1 + (k - 1) * v).toFixed(4)})`;
+    };
+    if (animate) {
+      ctx.emit?.('tick');
+      NovaMotion.spring({ from: 1, to: 0, springName: 'HEAVY', onUpdate: settle, onDone: () => settle(0) });
+    } else settle(0);
+  }
+
+  /* dblclick on the empty space = reset the zoom (not sweep) */
+  el.addEventListener('dblclick', (e) => {
+    if (e.target?.closest?.('.win')) return;
+    resetZoom();
+  });
 
   function sweep() {
     const els = Array.from(winEls.values());
@@ -183,5 +281,12 @@ export function mountCanvas(layer, ctx = {}) {
     if (!v) el.style.opacity = '0';
   }
 
-  return { el, enter, render, sweep, winEl: (id) => winEls.get(id), space, setActive };
+  el.dataset.zoom = '1.00';
+  return {
+    el, enter, render, sweep, winEl: (id) => winEls.get(id), space, setActive,
+    getZoom: () => zoom,
+    setZoom: (z) => { zoom = clamp(z, 0.6, 1.5); applySpace(); },
+    maxWindow: (id) => { const w = winEls.get(id); if (w) toggleMax(w); },
+    closeWindow: (id) => closeWindow(ctx, id),
+  };
 }

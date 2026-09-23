@@ -32,7 +32,7 @@
 | `docs/05-design-tokens.md` | Color (dark/light), typography, spacing, radii, elevation, sound set, haptic set. |
 | `prototype/` | Zero-dependency interactive web prototype of the NOVA experience (Arabic RTL UI). |
 | `docs/06-install.md` | PWA install, APK build (CI + local), signing, self-update, known limits. |
-| `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks, the **shipping harness** (deploy-check: local deployability + live delivery verification + red/green selftest), icon + asset staging, version bump. |
+| `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks, golden-curve generation + Kotlin port parity, the **shipping harness** (deploy-check: local deployability + live delivery verification + red/green selftest), icon + asset staging, version bump. |
 | `package.json` | `npm run serve` + `npm run check`. |
 
 ## Install it on a phone
@@ -96,15 +96,36 @@ safe-area insets, full-screen surfaces.
 
 The panel next to the phone drives everything a thumb would: motion profile, motion theme,
 NOVA Dark / Paper, accent packs, and 12 scenarios (new event, media, canvas, FLOW, CORE, CONTROL,
-resume workspace, power menu, privacy, AOD, lock, sweep). Keyboard: `K` CORE · `F` FLOW · `C` canvas ·
-`E` event · `M` media · `R` resume · `P` power · `L` lock · `S` sweep · `I` install · `U` apply update ·
-`Esc` back.
+resume workspace, power menu, privacy, AOD, lock, sweep).
+
+**Keyboard (mouse + keys are first-class on a computer):**
+
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| `K` | NOVA CORE | `I` | install the PWA |
+| `F` | NOVA FLOW | `W` | settings |
+| `C` | NOVA CANVAS | `U` | apply update |
+| `T` | NOVA CONTROL | `N` | Do Not Disturb on/off |
+| `E` | new event | `D` | desktop ↔ phone shell |
+| `M` | media playback | `?` | keyboard help overlay |
+| `R` | resume last workspace | `Esc` | interactive back |
+| `P` · `L` · `S` | power · lock · sweep | | |
+
+### NOVA on a computer (desktop shell)
+
+Open `…/index.html?shell=desktop` — or just use a window **≥ 1200 px** wide: NOVA leaves the phone
+frame and **fills the whole window**. The control deck becomes a floating overlay panel (the
+`لوحة NOVA` tool, bottom-right, or hotkey-driven), the **NOVA dock** pins open apps + favourites at
+the bottom of the screen, wheel **zooms NOVA CANVAS**, every window has **close /
+maximize** controls (double-click the title bar to maximize too), and the floating tools offer
+*عرض الهاتف* to drop back into the phone frame. Hotkey `D` or `?shell=web` returns any time —
+the choice sticks in the URL.
 
 ## Checks
 
 ```bash
 npm install      # jsdom (dev only), for the experience check
-npm run check    # the four gates below
+npm run check    # the six gates below
 ```
 
 | Command | What it proves |
@@ -112,8 +133,15 @@ npm run check    # the four gates below
 | `npm run check:motion` | Motion lint: no hand-rolled rAF, no ad-hoc easing, no inline transitions outside the engine. |
 | `npm run check:classes` | Every class the JS builds exists in the CSS (no silent unstyled surface). |
 | `npm run check:springs` | 109 physics assertions: every profile × theme stays inside the 6 % overshoot budget, settles in time, and Reduced Motion is critically damped with no blur/arcs. |
-| `npm run check:experience` | 50 assertions driving the real modules through jsdom: unlock, morph, interactive back, NovaBack's whole stack, CORE, FLOW, orb, canvas, drag & drop, split flow, sweep, the install sheet, the config matrix, and version/manifest consistency. |
+| `npm run check:port` | Kotlin port parity (Phase 2): `golden-curves.json` is fresh against the JS engine, the Kotlin springs/tokens/guard constants match `springs.js`/`config.js`, and the JVM test suite + CI step are wired. |
+| `npm run check:experience` | 134 assertions driving the real modules through jsdom: unlock, morph, interactive back, NovaBack's whole stack, CORE, FLOW, orb, canvas, drag & drop, split flow, sweep, the install sheet, the config matrix, version/manifest consistency — plus the desktop/feature pack: real battery status, `setShell` desktop↔phone, the dock, the `?` help overlay, keyboard parity (`T`/`N`/`D`), DND quiet events with no orb, sound + reduce-motion CONTROL nodes, persisted notes/tasks, calculator tape, terminal commands, wheel zoom, window close/maximize, and card long-press pinning. |
 | `npm run check:deploy` | The shipping harness (`tools/deploy-check.mjs`): every file `index.html` references exists, the manifest is valid and relative-pathed, the service worker precaches the **whole module graph** (walked statically), the workflow contract is intact, versions agree. `npm run check:deploy:live` additionally proves the deployed site answers with this version and the APK asset downloads; `npm run check:deploy:selftest` corrupts a scratch copy three ways and asserts the harness turns RED (a harness that cannot fail is a rubber stamp). |
+
+The other half of the motion contract runs on the JVM — `gradle testDebugUnitTest` inside `android/`
+(CI runs it before every APK build): `NovaMotionGoldenTest` + `SpringTest` replay
+**`golden-curves.json`** (generated by `npm run golden` from the JS engine) sample-for-sample —
+every profile × theme, the release-velocity budget, mid-flight re-targeting — plus the physics and
+engine behaviour. No-JUnit variant: `os.nova.motion.GoldenMain`.
 
 ## The prototype covers
 
@@ -135,8 +163,10 @@ npm run check    # the four gates below
 
 ## Status
 
-Phase 1 (Prototype). The docs are the contract; the web prototype is the proof of feel.
-See `docs/04-roadmap.md` for what comes next (Launcher/SystemUI → AOSP ROM → device).
+Phase 1 (Prototype) delivered; **Phase 2 started**: `NovaMotion` now exists twice with one spec —
+the web reference and the Kotlin port in `android/…/os/nova/motion/`, locked together by the
+golden curves in `npm run check:port` + `gradle testDebugUnitTest`.
+See `docs/04-roadmap.md` for what comes next (Compose shell → AOSP ROM → device).
 
 ## Naming
 

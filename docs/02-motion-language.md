@@ -196,12 +196,15 @@ Rendering strategy on Android:
 | 1 | Golden curves | `tools/spring-check.mjs` | For **every** profile × theme: overshoot ≤ 6.5 %, settle < 900 ms, Reduced Motion critically damped with 0 blur / no arcs / 4 % scale cap (109 assertions today) |
 | 2 | Velocity budget | `tools/spring-check.mjs` | Release velocities from 400 → 8000 px/s never break the overshoot budget |
 | 3 | Interrupt | `tools/spring-check.mjs` | Re-target at 15 %: single settle, no visual jump (`max step < 0.12`) |
-| 4 | Gesture replay | `tools/experience-check.mjs` | Real pointer traces through jsdom: unlock, open morph, interactive back, CORE, FLOW, canvas, orb, drag & drop, split, sweep (35 assertions) |
+| 4 | Gesture replay | `tools/experience-check.mjs` | Real pointer traces through jsdom: unlock, open morph, interactive back, CORE, FLOW, canvas, orb, drag & drop, split, sweep — plus the desktop/feature pack: shell flip, dock, `?` help, keyboard parity, DND quiet events, real editors, terminal, wheel zoom, window controls, pinning (134 assertions) |
 | 5 | Motion lint | `tools/lint-motion.sh` | No hand-rolled rAF, no ad-hoc easing, no inline `transition`, nothing outside the engine |
 | 6 | Surface lint | `tools/lint-classes.py` | Every class the JS builds exists in the stylesheets |
-| 7 | Perf gate | `NovaMotion.stats` + the deck | FPS, live animation count, worst frame and overshoot are visible while using the system; on device this becomes a CI gate on the device lab |
+| 7 | Kotlin golden curves | `android/app/src/test` + `tools/check-motion-port.mjs` | The Kotlin port (`os.nova.motion`) reproduces the JS trajectories sample-for-sample (1e-9), the resolved springs for every profile × theme, the velocity budget, re-targeting, and every guard constant — plus the physics/engine suite (7 JUnit tests, `GoldenMain` without JUnit). CI runs `gradle testDebugUnitTest` before every APK. |
+| 8 | Perf gate | `NovaMotion.stats` + the deck | FPS, live animation count, worst frame and overshoot are visible while using the system; on device this becomes a CI gate on the device lab |
 
 ```bash
 npm install     # jsdom, for the experience check
-npm run check   # motion lint + class lint + spring tests + experience check
+npm run check   # motion lint + class lint + spring tests + port parity + experience check
+npm run golden  # regenerate android/…/golden-curves.json after changing the JS engine
+gradle -p android testDebugUnitTest   # replay the golden curves on the JVM (CI does this too)
 ```
