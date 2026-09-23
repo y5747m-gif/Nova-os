@@ -51,6 +51,12 @@ NOVA OS
 
 ## 4. NOVA MOTION on Android
 
+> **Status:** the engine half is ported — `android/app/src/main/java/os/nova/motion/`
+> (`NovaSpring`, `NovaMotionConfig`, `NovaMotion`) is a JVM-pure Kotlin twin of
+> `prototype/src/motion/`, asserted sample-for-sample against the JS engine's golden
+> curves (`tools/golden-curves.mjs` → `golden-curves.json` → `gradle testDebugUnitTest`,
+> gated in CI before every APK). The Compose surface layer comes next.
+
 ```kotlin
 // Package: os.nova.motion
 data class NovaSpring(val stiffness: Float, val damping: Float, val mass: Float)
@@ -136,7 +142,7 @@ NovaState (single source of truth)
 ```
 Nova-os/
 ├── README.md
-├── package.json           ← scripts: serve + the four checks
+├── package.json           ← scripts: serve + the six checks
 ├── docs/                  ← the contract (this folder)
 ├── prototype/             ← Phase 1 interactive proof (web, no runtime deps)
 │   ├── index.html         ← device frame + live control deck
@@ -159,10 +165,16 @@ Nova-os/
 │       │   └── haptics.js ← haptic patterns + energy budget
 │       ├── surfaces/      ← lock, home, app, core, flow, orb, canvas, control, split, dnd
 │       └── main.js        ← surface state machine + gesture routing
+├── android/               ← the APK + the Phase 2 Kotlin tree
+│   └── app/src/
+│       ├── main/java/os/nova/motion/   ← NovaMotion port: springs, config, engine
+│       └── test/java/os/nova/motion/   ← golden-curve + physics + engine tests (JUnit)
 └── tools/
     ├── lint-motion.sh
     ├── lint-classes.py
     ├── spring-check.mjs
+    ├── golden-curves.mjs  ← regenerates android/…/golden-curves.json from the JS engine
+    ├── check-motion-port.mjs
     └── experience-check.mjs
 ```
 

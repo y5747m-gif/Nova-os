@@ -14,39 +14,10 @@ globalThis.document = {
   documentElement: { style: { setProperty() {} } },
 };
 
-const { integrate, isSettled, settleThresholds, criticallyDamped, dampingRatio, capOvershoot, MIN_ZETA } = await import('../prototype/src/motion/springs.js');
+const { criticallyDamped, dampingRatio, capOvershoot, MIN_ZETA } = await import('../prototype/src/motion/springs.js');
 const { capReleaseVelocity } = await import('../prototype/src/motion/motion.js');
 const config = await import('../prototype/src/motion/config.js');
-
-const DT = 1 / 60;
-const MAX_T = 3.0;
-
-function simulate(cfg, { from = 0, to = 1, velocity = 0, retarget = null } = {}) {
-  const st = { x: from, v: velocity };
-  let target = to;
-  let t = 0;
-  let peak = from;
-  let settledAt = null;
-  let jumpedBack = false;
-  let last = from;
-  const trace = [];
-
-  while (t < MAX_T) {
-    if (retarget && Math.abs(t - retarget.at) < DT) {
-      target = retarget.to;
-      st.v = retarget.velocity ?? st.v;
-    }
-    integrate(st, target, cfg, DT);
-    t += DT;
-    peak = Math.max(peak, st.x);
-    if (target > last && st.x < last - 1e-6 && st.x > 0) jumpedBack = true; // no rubber-band after commit
-    last = st.x;
-    trace.push(st.x);
-    const th = settleThresholds(Math.abs(target - from));
-    if (settledAt === null && isSettled(st, target, th.settleX, th.settleV)) settledAt = t;
-  }
-  return { overshoot: Math.max(0, (peak - to) / (to - from || 1)), settle: settledAt ?? Infinity, jumpedBack, trace };
-}
+const { simulate } = await import('./lib/simulate.mjs');
 
 let failures = 0;
 const results = [];

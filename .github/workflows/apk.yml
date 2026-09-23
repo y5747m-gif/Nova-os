@@ -64,6 +64,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      # The Kotlin port of NOVA MOTION must reproduce the JS golden curves
+      # (every profile × theme, velocity budget, retarget) before we ship an APK.
+      - name: NOVA MOTION golden curves (Kotlin)
+        working-directory: android
+        run: gradle --no-daemon --stacktrace testDebugUnitTest
+
       # Optional: a stable signing key so new builds install *over* the old ones
       # in place. Add these repository secrets to enable it (docs/06-install.md §6):
       #   NOVA_KEYSTORE_BASE64, NOVA_STORE_PASSWORD, NOVA_KEY_ALIAS, NOVA_KEY_PASSWORD

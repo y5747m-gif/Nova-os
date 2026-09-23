@@ -84,4 +84,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
     implementation 'androidx.webkit:webkit:1.11.0'
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
+
+    /* NOVA MOTION golden curves — the Kotlin port of the JS engine
+       (os.nova.motion) is asserted against tools/golden-curves.mjs.
+       Run: gradle testDebugUnitTest (CI does it before every APK build). */
+    testImplementation 'junit:junit:4.13.2'
 }
