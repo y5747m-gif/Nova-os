@@ -8,3 +8,6 @@ android/app/src/main/assets/www/
 android/local.properties
 android/keystore.properties
 android/*.jks
+
+# Vercel local project linkage
+.vercel/

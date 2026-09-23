@@ -65,7 +65,7 @@ Two real paths — full guide in **`docs/06-install.md`**:
 
 ## Run the prototype
 
-**Live site (no setup):** the NOVA URL is deployed automatically on every push:
+**Deployment options:** these require the host setup below before the site is public:
 
 - **https://y5747m-gif.github.io/Nova-os/** — GitHub Pages, published by
   `.github/workflows/pages.yml` (runs the quality gates first; a broken prototype never deploys).
@@ -73,10 +73,12 @@ Two real paths — full guide in **`docs/06-install.md`**:
   only counts as done once the site is proven to answer with the pushed version. One-time setup:
   the repo must have **Settings → Pages → Source = GitHub Actions** (the harness says exactly this
   when it is missing).
-- **https://nova-os-topaz-rho.vercel.app** — Vercel Production (auto-builds from `main`;
-  `vercel.json` makes `prototype/` the site root).
+- **Vercel:** open the production domain shown in the
+  [project dashboard](https://vercel.com/y5747m-gif/nova-os). The previously documented
+  domain returns `DEPLOYMENT_NOT_FOUND`; see [Vercel recovery](docs/06-install.md#vercel-recovery).
+  `vercel.json` serves `prototype/` without a framework or build step.
 
-That URL is also what the PWA installs from (`docs/06-install.md` §1).
+The working public URL is also what the PWA installs from (`docs/06-install.md` §1).
 
 ```bash
 # from the repo root
