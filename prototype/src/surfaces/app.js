@@ -13,7 +13,7 @@ import {
 } from '../core/store.js';
 import { draggable } from '../motion/gestures.js';
 import {
-  isNativeLauncher, dialNumber, pickWallpaper,
+  isNativeLauncher, dialNumber, pickWallpaper, launcherState, requestDefaultLauncher, openHomeSettings,
 } from '../core/launcher.js';
 import {
   WALLPAPERS, wallpaperId, setWallpaper, onWallpaperChange,
@@ -291,6 +291,40 @@ function settingsContent(ctx) {
   const appearWrap = h('div', {});
   const motionWrap = h('div', {});
   const soundWrap = h('div', {});
+  const launcherWrap = h('div', { class: 'set__sec', dataset: { launcherSettings: '1' } });
+  let confirmHomeChange = false;
+  function paintLauncher() {
+    if (!isNativeLauncher()) return;
+    const active = launcherState().def;
+    launcherWrap.replaceChildren(
+      h('div', { class: 'set__title' }, 'الواجهة الرئيسية'),
+      h('p', { class: 'set__note', dataset: { launcherStatus: '1' } }, active
+        ? 'NOVA هي الواجهة الرئيسية. زر الرجوع لا يغلقها. لتغيير الواجهة، استخدم الإعدادات.'
+        : 'NOVA ليست الواجهة الرئيسية. فعّلها لتفتح عند الضغط على زر الرئيسية.'),
+      h('p', { class: 'set__note' }, 'أندرويد يدير الذاكرة وإيقاف التطبيقات. NOVA لا تمنع الإيقاف الإجباري من إعدادات النظام.'),
+    );
+    if (confirmHomeChange && active) {
+      launcherWrap.append(
+        h('p', { class: 'set__note' }, 'اختر واجهة أخرى في إعدادات أندرويد. ستظل NOVA الواجهة الرئيسية حتى تغيّر اختيارك.'),
+        h('button', { class: 'set__btn', dataset: { launcherConfirm: '1' }, onclick: () => {
+          confirmHomeChange = false; paintLauncher(); openHomeSettings();
+        } }, 'متابعة إلى إعدادات أندرويد'),
+        h('button', { class: 'set__btn', dataset: { launcherCancel: '1' }, onclick: () => {
+          confirmHomeChange = false; paintLauncher();
+        } }, 'إلغاء'),
+      );
+    } else {
+      launcherWrap.append(h('button', {
+        class: 'set__btn', dataset: { launcherToggle: '1' }, onclick: () => {
+          if (active) { confirmHomeChange = true; paintLauncher(); }
+          else requestDefaultLauncher();
+        },
+      }, active ? 'تغيير الواجهة الرئيسية / إيقاف استخدام NOVA' : 'تفعيل NOVA كواجهة رئيسية'));
+    }
+  }
+  const onLauncherState = () => { confirmHomeChange = false; paintLauncher(); };
+  if (isNativeLauncher()) window.addEventListener('nova:launcher', onLauncherState);
+  paintLauncher();
 
   function paintWalls() {
     const entries = Object.entries(WALLPAPERS)
@@ -412,6 +446,7 @@ function settingsContent(ctx) {
       h('div', { class: 'set__meta' }, h('b', {}, h('span', { class: 'set__brand', text: 'NOVA OS' })), h('span', {}, `v${NOVA_VERSION} · كل شيء على جهازك`)),
     ),
 
+    isNativeLauncher() ? launcherWrap : null,
     h('div', { class: 'set__sec' }, h('div', { class: 'set__title' }, 'الخلفية', h('small', {}, 'غيّر شكل المساحة')), wallsWrap),
     h('div', { class: 'set__sec' }, h('div', { class: 'set__title' }, 'المظهر', h('small', {}, 'ليل أو نهار · لون التمييز')), appearWrap),
     h('div', { class: 'set__sec' }, h('div', { class: 'set__title' }, 'NOVA MOTION', h('small', {}, 'الحركة والفيزياء')), motionWrap),
@@ -441,12 +476,17 @@ function settingsContent(ctx) {
     ),
   );
 
-  root.addEventListener('nova:teardown', () => { alive = false; off(); });
-  // when the app surface is torn down the panel goes away entirely
+  let observer;
+  const cleanup = () => {
+    alive = false;
+    off();
+    window.removeEventListener('nova:launcher', onLauncherState);
+    observer?.disconnect();
+  };
+  root.addEventListener('nova:teardown', cleanup, { once: true });
   try {
-    new MutationObserver(() => {
-      if (!root.isConnected) { alive = false; off(); }
-    }).observe(document.getElementById('layer-apps') || document.body, { childList: true });
+    observer = new MutationObserver(() => { if (!root.isConnected) cleanup(); });
+    observer.observe(document.getElementById('screen') || document.body, { childList: true, subtree: true });
   } catch { /* ignore */ }
   return root;
 }

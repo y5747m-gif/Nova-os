@@ -31,6 +31,7 @@
 | `docs/04-roadmap.md` | The 4 phases: Prototype → System Experience → ROM → Device, with exit criteria and risks. |
 | `docs/05-design-tokens.md` | Color (dark/light), typography, spacing, radii, elevation, sound set, haptic set. |
 | `prototype/` | Zero-dependency interactive web prototype of the NOVA experience (Arabic RTL UI). |
+| `docs/07-launcher-stability.md` | Stable Android HOME behaviour, settings-only launcher change, recovery and device test checklist. |
 | `docs/06-install.md` | PWA install, APK build (CI + local), signing, self-update, known limits. |
 | `tools/` | Motion lint, class lint, spring physics tests, experience (golden-flow) checks, golden-curve generation + Kotlin port parity, the **shipping harness** (deploy-check: local deployability + live delivery verification + red/green selftest), icon + asset staging, version bump. |
 | `package.json` | `npm run serve` + `npm run check`. |

@@ -1,6 +1,5 @@
 package os.nova.launcher
 
-import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -87,18 +86,11 @@ class NovaBridge(
     fun isLauncher(): Boolean = isDefaultLauncher()
 
     @JavascriptInterface
-    fun isDefaultLauncher(): Boolean = guarded(false) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val rm = ctx.getSystemService(RoleManager::class.java)
-            if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_HOME)) {
-                return@guarded rm.isRoleHeld(RoleManager.ROLE_HOME)
-            }
-        }
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        val resolved = ctx.packageManager.resolveActivity(
-            intent, PackageManager.MATCH_DEFAULT_ONLY
-        )
-        resolved?.activityInfo?.packageName == ctx.packageName
+    fun isDefaultLauncher(): Boolean = activity.isDefaultHome()
+
+    @JavascriptInterface
+    fun ready() {
+        activity.runOnUiThread { activity.onShellReady(web) }
     }
 
     /** One-tap request: the system role dialog on Android 10+, else settings. */
@@ -263,9 +255,8 @@ class NovaBridge(
         thread(name = "nova-download") {
             val release = NovaUpdater.ApkRelease(name = name, url = url, tag = "", size = 0)
             val ok = NovaInstaller.downloadAndInstall(ctx, release)
-            web.post {
-                web.evaluateJavascript("window.NovaOnInstall && NovaOnInstall('${if (ok) "ready" else "fallback"}')", null)
-            }
+            activity.postToShell(web,
+                "window.NovaOnInstall && NovaOnInstall('${if (ok) "ready" else "fallback"}')")
         }
     }
 

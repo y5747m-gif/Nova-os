@@ -142,12 +142,78 @@ Object.defineProperty(window.navigator, 'getBattery', {
   writable: true,
 });
 
+const nativeMode = process.argv.includes('--native');
+let nativeDefault = !process.argv.includes('--not-default');
+let homeSettingsCalls = 0;
+let homeRoleCalls = 0;
+let nativeReady = false;
+if (nativeMode) {
+  Object.defineProperty(window.navigator, 'userAgent', { value: 'Android NovaOS/test' });
+  window.NovaSystem = {
+    listApps: () => '[]', launchApp: () => true,
+    isDefaultLauncher: () => nativeDefault, setupDone: () => true,
+    hasNotificationAccess: () => false, hasUsageAccess: () => false,
+    openHomeSettings: () => { homeSettingsCalls++; },
+    requestDefaultLauncher: () => { homeRoleCalls++; },
+    ready: () => { nativeReady = typeof window.NovaBack === 'function'
+      && typeof window.NovaGoHome === 'function' && typeof window.NovaOnRoute === 'function'; },
+  };
+}
+const initialHistoryLength = window.history.length;
 await import(`file://${ROOT}/src/main.js`);
 await new Promise((r) => setTimeout(r, 300));
 
 const N = window.NOVA;
 check('boot: NOVA global exists', !!N);
-check('boot: lock surface', N.state.surface === 'lock', N.state.surface);
+if (nativeMode) {
+  check('native: ready handshake runs after navigation hooks', nativeReady);
+  check('native: cold start opens home, not simulated lock', N.state.surface === 'home');
+  check('native: home is fully visible', N.ui.home.root.style.opacity === '1' && N.ui.lock.el.classList.contains('hidden'));
+  check('native: does not create a browser history back trap', window.history.length === initialHistoryLength);
+  for (let i = 0; i < 10; i++) window.NovaBack();
+  check('native: repeated Back stays on home', N.state.surface === 'home');
+  N.runAction('lock'); N.runAction('aod');
+  check('native: demo actions cannot replace Android lock screen', N.state.surface === 'home');
+  N.openPanel('core');
+  await new Promise((r) => setTimeout(r, 700));
+  check('native: Back consumes panel', window.NovaBack() === true);
+  await new Promise((r) => setTimeout(r, 700));
+  check('native: Back returns to home', N.state.surface === 'home' && !N.state.panel);
+  N.runAction('power');
+  await new Promise((r) => setTimeout(r, 900));
+  check('native: power action routes to settings, no fake shutdown', N.state.focusedApp === 'settings' && !document.querySelector('.power'));
+  const section = () => document.querySelector('[data-launcher-settings]');
+  const button = (key) => section()?.querySelector(`[data-launcher-${key}]`);
+  check('native: launcher controls appear in settings', !!section());
+  if (!nativeDefault) {
+    button('toggle').click();
+    check('native: activation asks Android for HOME role', homeRoleCalls === 1 && homeSettingsCalls === 0);
+    nativeDefault = true;
+    window.NovaLauncherState = { def: true, setup: true };
+    window.dispatchEvent(new window.CustomEvent('nova:launcher'));
+  }
+  button('toggle').click();
+  check('native: deactivation requires confirmation', !!button('confirm') && homeSettingsCalls === 0);
+  button('cancel').click();
+  check('native: cancel preserves launcher', !button('confirm') && homeSettingsCalls === 0);
+  button('toggle').click(); button('confirm').click();
+  check('native: confirmed deactivation opens Android settings only', homeSettingsCalls === 1 && nativeDefault);
+  window.dispatchEvent(new window.CustomEvent('nova:launcher'));
+  check('native: returning without changing default keeps active status', section().textContent.includes('NOVA هي الواجهة الرئيسية'));
+  nativeDefault = false;
+  window.NovaLauncherState = { def: false, setup: true };
+  window.dispatchEvent(new window.CustomEvent('nova:launcher'));
+  check('native: returning from Android settings refreshes status', section().textContent.includes('NOVA ليست الواجهة الرئيسية'));
+  button('toggle').click();
+  check('native: inactive launcher can be activated again', homeRoleCalls >= 1);
+  window.NovaGoHome();
+  await new Promise((r) => setTimeout(r, 900));
+  check('native: HOME returns from settings', N.state.surface === 'home');
+  check('native: no runtime errors', errors.length === 0, errors.join('; '));
+  console.log(`\n${results.filter((r) => r.ok).length}/${results.length} native checks passed`);
+  process.exit(results.some((r) => !r.ok) || errors.length ? 1 : 0);
+}
+check('boot: lock surface' , N.state.surface === 'lock', N.state.surface);
 check('boot: events seeded', N.state.events.length >= 2, String(N.state.events.length));
 check('boot: deck chips rendered', window.document.querySelectorAll('#chips-profile .chip').length === 4);
 check('the tool shows no raw codes or paths', !window.document.querySelector('#deck code, .screen code')

@@ -34,7 +34,17 @@ function loop(now) {
     stats.worstFrame = Math.max(0, stats.worstFrame - 4);
   }
 
-  for (const fn of Array.from(subscribers)) fn(dt, now);
+  for (const fn of Array.from(subscribers)) {
+    if (!subscribers.has(fn)) continue;
+    try {
+      fn(dt, now);
+    } catch (error) {
+      // One broken/detached surface must not kill the shared animation loop.
+      // Drop it so the exception cannot repeat on every frame.
+      subscribers.delete(fn);
+      console.error('[nova] animation callback failed:', error);
+    }
+  }
   stats.active = subscribers.size;
 
   if (subscribers.size === 0) {
