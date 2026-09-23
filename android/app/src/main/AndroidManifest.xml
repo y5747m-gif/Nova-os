@@ -84,6 +84,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density|fontScale"
             android:exported="true"
             android:launchMode="singleTask"
+            android:excludeFromRecents="true"
             android:resizeableActivity="true"
             android:screenOrientation="portrait"
             android:stateNotNeeded="true"

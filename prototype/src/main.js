@@ -725,6 +725,7 @@ function closeSplit() {
 
 /* ── power menu (grows from the press point like an orb) ───────── */
 function powerMenu(x, y) {
+  if (isNativeLauncher()) { runAction('settings'); return; }
   if (document.querySelector('.power')) return;
   const items = [
     { label: 'إعادة التشغيل', icon: 'restart', note: 'NOVA', angle: -Math.PI / 2 },
@@ -1199,6 +1200,7 @@ function runAction(id) {
       openApp('privacy', ui.home.cardEl('notes'));
       break;
     case 'aod': {
+      if (isNativeLauncher()) { toast('استخدم زر الطاقة لقفل الهاتف بأمان'); break; }
       const showing = !ui.lock.aod.classList.contains('hidden');
       closePanel(true);
       state.surface = 'lock';
@@ -1210,6 +1212,7 @@ function runAction(id) {
       break;
     }
     case 'lock':
+      if (isNativeLauncher()) { toast('استخدم زر الطاقة لقفل الهاتف بأمان'); break; }
       closePanel(true);
       state.surface = 'lock';
       clear(L.apps); clear(L.split);
@@ -1290,9 +1293,11 @@ try {
 } catch { /* ignore */ }
 
 buildDeck();
-state.surface = 'lock';
+// Android owns the secure lock screen; a launcher starts directly at home.
+state.surface = isNativeLauncher() ? 'home' : 'lock';
+ui.lock.setVisible(!isNativeLauncher());
 ui.home.setHidden(false);
-ui.home.root.style.opacity = '0.2';
+ui.home.root.style.opacity = isNativeLauncher() ? '1' : '0.2';
 ui.home.enter();
 paintCaption();
 
@@ -1537,7 +1542,7 @@ function NovaBack() {
 }
 
 /* an installed web app must answer the system back gesture too */
-if (isShellApp) {
+if (isShellApp && !isNativeLauncher()) {
   history.pushState({ nova: true }, '');
   window.addEventListener('popstate', () => {
     if (NovaBack()) history.pushState({ nova: true }, '');
@@ -1559,3 +1564,6 @@ window.NOVA = {
   back: NovaBack, goHome: window.NovaGoHome,
   shell: shellMode, setShell, toggleHelp, toggleDeck, dnd: () => state.dnd, setDnd,
 };
+
+// Signal only after all native navigation hooks are installed. Older shells ignore it.
+try { window.NovaSystem?.ready?.(); } catch { /* browser / older APK */ }

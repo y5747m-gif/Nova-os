@@ -12,4 +12,7 @@
     <string name="widgets_close">إغلاق</string>
     <string name="widgets_empty">مفيش ودجات بعد — اضغط «إضافة ودجت» واختار من ودجات جهازك.</string>
     <string name="widgets_remove">إزالة «%1$s»</string>
+    <string name="shell_recovery_message">تعذّر تشغيل واجهة NOVA. أعد المحاولة أو اختر واجهة أخرى من الإعدادات. تفضيلاتك محفوظة.</string>
+    <string name="shell_retry">إعادة تحميل الواجهة</string>
+    <string name="shell_home_settings">إعدادات الشاشة الرئيسية</string>
 </resources>
