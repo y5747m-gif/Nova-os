@@ -44,6 +44,7 @@ export const APPS = {
   wear:      { id: 'wear',      name: 'الأجهزة',        kind: 'wear',     icon: 'bluetooth', color: '#6c5ce7', sub: 'ساعة NOVA · 86%',           title: 'الأجهزة',        titleSub: 'متصلة' },
   privacy:   { id: 'privacy',   name: 'مركز الخصوصية',  kind: 'privacy',  icon: 'shield',   color: '#7dd3fc', sub: 'استخدام الحساسات',          title: 'مركز الخصوصية',  titleSub: 'آخر 24 ساعة' },
   settings:  { id: 'settings',  name: 'الإعدادات',      kind: 'settings', icon: 'settings', color: '#6c5ce7', sub: 'الخلفية · المظهر · الحركة', title: 'الإعدادات',      titleSub: 'خصّص NOVA' },
+  terminal:  { id: 'terminal',  name: 'الطرفية',        kind: 'terminal', icon: 'terminal', color: '#4ade80', sub: 'سطر أوامر NOVA',            title: 'الطرفية',        titleSub: 'nova@os' },
 };
 
 export const CONTACTS = [
@@ -53,6 +54,27 @@ export const CONTACTS = [
   { id: 'folder',  name: 'رحلة الغردقة', initials: '✈', kind: 'folder', icon: 'files' },
   { id: 'nearby',  name: 'تابلت NOVA', initials: '⌁', kind: 'device', icon: 'bluetooth' },
 ];
+
+/* ── persistence — choices survive a reload (دفتر النظام) ──────── */
+export const PERSIST = {
+  dnd: 'nova.dnd.v1',
+  pinned: 'nova.pinned.v1',
+  tasks: 'nova.tasks.v1',
+  notes: 'nova.notes.v1',
+};
+
+export function loadJSON(key, fallback) {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch { return fallback; }
+}
+
+export function saveJSON(key, value) {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(value));
+  } catch { /* private mode — choices just won't survive a reload */ }
+}
 
 /* ── state ─────────────────────────────────────────────────────── */
 export const state = {
@@ -68,6 +90,7 @@ export const state = {
   events: [],                 // NOVA FLOW
   orb: null,                  // { event } | 'card'
   mediaPlaying: false,
+  dnd: loadJSON(PERSIST.dnd, false), // عدم الإزعاج — events arrive silently
   staged: null,               // { kind:'photo', index } staged content for drag & drop
   lastWorkspace: ['whatsapp', 'browser', 'notes'],
   seenLock: false,
@@ -92,11 +115,19 @@ export function makeEvent(preset = {}) {
 }
 
 export function pushEvent(evt) {
+  if (state.dnd) evt.quiet = true; // عدم الإزعاج: يصل بصمت، من غير orb ولا مقاطعة
   state.events.unshift(evt);
   // If media is playing the event must NOT interrupt — it becomes an orb (docs/01 §7)
-  if (state.mediaPlaying && state.surface !== 'lock') state.orb = { event: evt };
+  if (state.mediaPlaying && state.surface !== 'lock' && !state.dnd) state.orb = { event: evt };
   notify('events');
   return evt;
+}
+
+/** عدم الإزعاج — one toggle, honoured by FLOW, the orb and the sound set. */
+export function setDnd(on) {
+  state.dnd = !!on;
+  saveJSON(PERSIST.dnd, state.dnd);
+  notify('dnd');
 }
 
 export function deferEvent(id) {

@@ -163,7 +163,7 @@ Nova-os/
 │       │   ├── icons.js   ← NOVA Icon Language (single-line SVG set)
 │       │   ├── sound.js   ← WebAudio-synthesised sound set (no assets)
 │       │   └── haptics.js ← haptic patterns + energy budget
-│       ├── surfaces/      ← lock, home, app, core, flow, orb, canvas, control, split, dnd
+│       ├── surfaces/      ← lock, home, app, core, flow, orb, canvas, control, split, dnd, dock
 │       └── main.js        ← surface state machine + gesture routing
 ├── android/               ← the APK + the Phase 2 Kotlin tree
 │   └── app/src/

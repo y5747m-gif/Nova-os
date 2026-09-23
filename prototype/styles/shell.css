@@ -301,3 +301,87 @@ body[data-mode="light"] .deck__foot { border-top-color: rgba(17, 19, 24, .08); }
 @media (max-height: 900px) and (min-width: 941px) {
   .device { zoom: .88; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP SHELL — NOVA fills the window (≥1200px or ?shell=desktop)
+   The deck slides in as an overlay panel; the phone frame disappears.
+   ══════════════════════════════════════════════════════════════ */
+body[data-shell="desktop"] .stage {
+  padding: 0;
+  gap: 0;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 100vh;
+}
+body[data-shell="desktop"] .device-wrap {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100vh;
+  gap: 0;
+  align-items: stretch;
+}
+body[data-shell="desktop"] .device {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 0;
+  background: var(--nv-bg);
+  box-shadow: none;
+}
+body[data-shell="desktop"] .device-notch,
+body[data-shell="desktop"] .device-caption { display: none; }
+body[data-shell="desktop"] .screen { border-radius: 0; }
+
+/* the control deck becomes a floating overlay panel (JS spring drives
+   transform: deckP −1 → translateX(−110%) hidden · 0 → in place) */
+body[data-shell="desktop"] .deck {
+  position: fixed;
+  left: 14px;
+  top: 14px;
+  bottom: 14px;
+  width: 352px;
+  height: auto;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 76;
+  will-change: transform;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
+}
+body[data-shell="desktop"][data-deck="closed"] .deck { pointer-events: none; }
+
+/* floating desk tools — phone view · deck · shortcuts */
+.desk-tools {
+  display: none;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  gap: 8px;
+  z-index: 77;
+}
+body[data-shell="desktop"] .desk-tools { display: flex; }
+.desk-tools__btn {
+  padding: 9px 15px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--nv-text);
+  background: var(--nv-glass);
+  border: 1px solid var(--nv-line-strong);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--nv-shadow-card);
+  cursor: pointer;
+  transition: transform var(--nv-fast) var(--nv-ease), background var(--nv-fast) var(--nv-ease);
+}
+.desk-tools__btn:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--nv-accent) 22%, var(--nv-glass));
+}
+.desk-tools__btn:active { transform: translateY(0) scale(.97); }
+
+/* keep the phone framing on smaller windows even when desktop was forced */
+@media (max-width: 720px) {
+  body[data-shell="desktop"] .desk-tools { right: 10px; bottom: 10px; }
+  body[data-shell="desktop"] .deck { width: min(352px, calc(100vw - 28px)); }
+}

@@ -20,6 +20,7 @@
   ],
   "shortcuts": [
     { "name": "NOVA CORE", "short_name": "CORE", "url": "./index.html?action=core" },
-    { "name": "NOVA CANVAS", "short_name": "CANVAS", "url": "./index.html?action=canvas" }
+    { "name": "NOVA CANVAS", "short_name": "CANVAS", "url": "./index.html?action=canvas" },
+    { "name": "NOVA FLOW", "short_name": "FLOW", "url": "./index.html?action=flow" }
   ]
 }

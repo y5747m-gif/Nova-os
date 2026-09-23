@@ -22,6 +22,7 @@
 | Sound set + haptics language | ✅ (WebAudio synth) |
 | Kotlin/Compose port of `NovaMotion` | ⏳ Phase 2 start → **springs + tokens + profiles + engine ✅** (`android/app/src/main/java/os/nova/motion/`, golden-curve tested), **Compose shell ⏳** |
 | Installable web app (PWA) + Android APK shell | ✅ `android/`, `docs/06-install.md` |
+| Desktop compatibility (full-window shell, deck overlay, dock, keyboard/mouse parity) + feature pack 0.9 (window controls, wheel zoom, DND, real editors, terminal, pinning) | ✅ `prototype/`, `docs/01` §21 |
 
 **Exit criteria**
 

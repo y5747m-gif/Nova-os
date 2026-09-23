@@ -8,7 +8,9 @@
 
 import { h, gradient } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { appMeta, APPS, CONTACTS } from '../core/store.js';
+import {
+  appMeta, APPS, CONTACTS, state, setDnd, loadJSON, saveJSON, PERSIST, allAppIds,
+} from '../core/store.js';
 import { draggable } from '../motion/gestures.js';
 import {
   isNativeLauncher, dialNumber, pickWallpaper,
@@ -36,7 +38,7 @@ export function contentFor(appId, ctx = {}) {
     case 'chat': return chatContent(ctx, meta);
     case 'gallery': return galleryContent(ctx);
     case 'music': return musicContent(ctx, meta);
-    case 'notes': return notesContent();
+    case 'notes': return notesContent(ctx);
     case 'browser': return browserContent();
     case 'maps': return mapsContent();
     case 'privacy': return privacyContent(ctx);
@@ -68,6 +70,7 @@ export function contentFor(appId, ctx = {}) {
     case 'iot': return iotContent(ctx);
     case 'wear': return wearContent();
     case 'files': return filesContent();
+    case 'terminal': return terminalContent(ctx);
     default: return genericContent(meta, ctx);
   }
 }
@@ -169,14 +172,72 @@ function musicContent(ctx, meta) {
   );
 }
 
-function notesContent() {
-  return h('div', { class: 'simple' },
-    h('h3', {}, 'خطة الأسبوع'),
-    h('p', {}, '• إنهاء بروتوتايب NOVA MOTION\n• مراجعة منحنى الـspring مع الفريق\n• تجربة الإيماءات على جهاز حقيقي'),
-    h('div', { class: 'line', style: { width: '82%' } }),
-    h('div', { class: 'line', style: { width: '64%' } }),
-    h('div', { class: 'line', style: { width: '74%' } }),
-  );
+function notesContent(ctx) {
+  /* a REAL notebook: create, edit, persisted on the device */
+  const seed = [{
+    id: 'n1',
+    title: 'خطة الأسبوع',
+    body: '• إنهاء بروتوتايب NOVA MOTION\n• مراجعة منحنى الـspring مع الفريق\n• تجربة الإيماءات على جهاز حقيقي',
+  }];
+  const notes = loadJSON(PERSIST.notes, null) || seed.map((n) => ({ ...n }));
+  let sel = null;
+
+  const save = () => saveJSON(PERSIST.notes, notes);
+  const root = h('div', { class: 'nt' });
+
+  function renderList() {
+    const rows = notes.map((n) => h('button', {
+      class: 'nt__row',
+      onclick: () => { sel = n.id; render(); },
+    },
+      h('b', {}, n.title || 'بلا عنوان'),
+      h('span', {}, (n.body || 'ملاحظة فارغة').split('\n')[0]),
+      h('small', {}, `${(n.body || '').length} حرف`),
+    ));
+    root.replaceChildren(
+      h('div', { class: 'nt__bar' },
+        h('span', {}, `${notes.length} ${notes.length === 1 ? 'ملاحظة' : 'ملاحظات'}`),
+        h('button', { class: 'nt__new', dataset: { nodrag: '1' }, onclick: () => {
+          const n = { id: `n${Date.now()}`, title: 'ملاحظة جديدة', body: '' };
+          notes.unshift(n); save(); sel = n.id; render();
+          ctx.emit?.('success');
+        } }, '＋ جديدة'),
+      ),
+      h('div', { class: 'nt__list' }, rows.length ? rows : h('p', {}, 'لا توجد ملاحظات — اضغط «＋ جديدة».')),
+    );
+  }
+
+  function renderEditor() {
+    const n = notes.find((x) => x.id === sel);
+    if (!n) { sel = null; render(); return; }
+    const title = h('input', {
+      class: 'nt__title', value: n.title, placeholder: 'العنوان',
+      dataset: { nodrag: '1' },
+      oninput: (e) => { n.title = e.target.value; save(); },
+    });
+    const area = h('textarea', {
+      class: 'nt__area', placeholder: 'اكتب هنا… يُحفظ تلقائيًا على جهازك',
+      dataset: { nodrag: '1' }, text: n.body,
+      oninput: (e) => { n.body = e.target.value; save(); },
+    });
+    root.replaceChildren(
+      h('div', { class: 'nt__bar' },
+        h('button', { class: 'nt__back', dataset: { nodrag: '1' }, onclick: () => { sel = null; render(); } }, '← القائمة'),
+        h('span', {}, 'يُحفظ تلقائيًا'),
+        h('button', { class: 'nt__del', dataset: { nodrag: '1' }, onclick: () => {
+          const i = notes.findIndex((x) => x.id === n.id);
+          if (i >= 0) notes.splice(i, 1);
+          save(); sel = null; render(); ctx.emit?.('close');
+        } }, 'حذف'),
+      ),
+      title, area,
+    );
+    try { area.focus(); } catch { /* ignore */ }
+  }
+
+  function render() { sel ? renderEditor() : renderList(); }
+  render();
+  return root;
 }
 
 function browserContent() {
@@ -722,9 +783,14 @@ function clockContent() {
 }
 
 function calcContent(ctx) {
+  const tape = h('div', { class: 'calc__tape' });
   const display = h('div', { class: 'calc__display' }, '0');
-  const st = { cur: '0', acc: null, op: null, fresh: true };
+  const st = { cur: '0', acc: null, op: null, fresh: true, history: [] };
   const show = () => { display.textContent = st.cur.length > 12 ? Number(st.cur).toExponential(5) : st.cur; };
+  const paintTape = () => {
+    tape.replaceChildren(...st.history.slice(0, 4).map((line) => h('div', { class: 'calc__line' }, line)));
+  };
+  paintTape();
   const apply = (a, b, op) => (op === '+' ? a + b : op === '−' ? a - b : op === '×' ? a * b : op === '÷' ? (b === 0 ? NaN : a / b) : b);
   const num = (k) => {
     if (st.fresh) { st.cur = k === '.' ? '0.' : k; st.fresh = false; }
@@ -741,6 +807,10 @@ function calcContent(ctx) {
   const eq = () => {
     if (st.op == null) return;
     const r = apply(Number(st.acc), Number(st.cur), st.op);
+    const line = `${st.acc} ${st.op} ${st.cur} = ${Number.isFinite(r) ? Math.round(r * 1e10) / 1e10 : 'خطأ'}`;
+    st.history.unshift(line);
+    st.history = st.history.slice(0, 12);
+    paintTape();
     st.cur = Number.isFinite(r) ? String(Math.round(r * 1e10) / 1e10) : 'خطأ';
     st.acc = null; st.op = null; st.fresh = true;
     show();
@@ -748,6 +818,7 @@ function calcContent(ctx) {
   };
   const key = (label, cls, fn) => h('button', { class: `calc__key ${cls}`, onclick: fn }, label);
   return h('div', { class: 'calc' },
+    tape,
     display,
     h('div', { class: 'calc__pad' },
       key('C', 'calc__key--op', () => { st.cur = '0'; st.acc = null; st.op = null; st.fresh = true; show(); }),
@@ -825,20 +896,55 @@ function booksContent() {
 }
 
 function tasksContent(ctx) {
-  const items = [
+  const DEFAULT_TASKS = [
     ['مراجعة منحنى الربيع', false], ['تجربة الإيماءات', false], ['مكالمة التصميم', true],
     ['تحديث خطة الأسبوع', true], ['إرسال التقرير', false],
   ];
-  return h('div', { class: 'tsk' }, ...items.map(([t, done]) => {
-    const row = h('button', {
-      class: done ? 'tsk__row tsk__row--done' : 'tsk__row',
-      onclick: () => {
-        row.classList.toggle('tsk__row--done');
-        ctx.emit?.(row.classList.contains('tsk__row--done') ? 'success' : 'tick');
-      },
-    }, h('i', { class: 'tsk__check', html: icon('check', 'ico ico--sm') }), h('span', {}, t));
-    return row;
-  }));
+  /* persisted: the checkmark survives a reload */
+  const items = loadJSON(PERSIST.tasks, null) || DEFAULT_TASKS.map(([t, done]) => ({ t, done }));
+  const save = () => saveJSON(PERSIST.tasks, items);
+  save();
+
+  const root = h('div', { class: 'tsk' });
+  const input = h('input', {
+    class: 'tsk__in', placeholder: 'مهمة جديدة…', dataset: { nodrag: '1' },
+    onkeydown: (e) => {
+      if (e.key === 'Enter' && e.target.value.trim()) {
+        items.unshift({ t: e.target.value.trim(), done: false });
+        e.target.value = '';
+        save(); render();
+        ctx.emit?.('success');
+      }
+    },
+  });
+  const addRow = h('div', { class: 'tsk__add' },
+    h('i', { class: 'tsk__check tsk__check--add', html: icon('pluss', 'ico ico--sm') }),
+    input,
+  );
+
+  function render() {
+    const rows = items.map((it, i) => {
+      const row = h('button', {
+        class: it.done ? 'tsk__row tsk__row--done' : 'tsk__row',
+        onclick: () => {
+          it.done = !it.done;
+          save();
+          row.classList.toggle('tsk__row--done', it.done);
+          ctx.emit?.(it.done ? 'success' : 'tick');
+        },
+      }, h('i', { class: 'tsk__check', html: icon('check', 'ico ico--sm') }), h('span', {}, it.t));
+      void i;
+      return row;
+    });
+    const done = items.filter((x) => x.done).length;
+    root.replaceChildren(
+      addRow,
+      h('div', { class: 'tsk__count' }, `${done} من ${items.length} منجزة`),
+      ...rows,
+    );
+  }
+  render();
+  return root;
 }
 
 function storeContent(ctx) {
@@ -1077,6 +1183,105 @@ function genericContent(meta, ctx) {
   );
 }
 
+/* ── الطرفية — a command line for the whole system ─────────────── */
+function terminalContent(ctx) {
+  const out = h('div', { class: 'term__out' });
+  const input = h('input', {
+    class: 'term__in', placeholder: 'اكتب help ثم Enter',
+    autocomplete: 'off', spellcheck: 'false', dataset: { nodrag: '1' },
+  });
+
+  function print(line = '', cls = '') {
+    out.append(h('div', { class: cls ? `term__line ${cls}` : 'term__line' }, line));
+    out.scrollTop = out.scrollHeight;
+  }
+
+  function systemInfo() {
+    const lines = [
+      `NOVA OS ${NOVA_VERSION} · الإصدار الكامل`,
+      `الحساب ....... nova@os`,
+      `الوضع ....... ${nova.profile} / ${nova.theme} / ${nova.mode}`,
+      `التطبيقات .... ${Object.keys(APPS).length} في الكتالوج`,
+      `المساحة ...... ${state.windows.length} نافذة · ${state.events.length} حدث`,
+      `عدم الإزعاج .. ${state.dnd ? 'مفعّل' : 'مطفأ'} · الصوت ${soundOn() ? 'مسموع' : 'صامت'}`,
+      `الجهاز ....... ${navigator.platform || 'unknown'} · ${navigator.userAgent.includes('Mobile') ? 'هاتف' : 'حاسوب'}`,
+    ];
+    lines.forEach((l) => print(l));
+  }
+
+  function run(raw) {
+    const cmd = raw.trim();
+    if (!cmd) return;
+    print(`› ${cmd}`, 'term__line--in');
+    const [head, ...rest] = cmd.split(/\s+/);
+    const arg = rest.join(' ');
+    const k = head.toLowerCase();
+    const alias = {
+      مساعدة: 'help', إصدار: 'version', تاريخ: 'date', التطبيقات: 'apps',
+      افتح: 'open', ثيم: 'theme', وضع: 'profile', خلفية: 'wallpaper',
+      مسح: 'clear', نظام: 'neofetch',
+    }[head] || k;
+
+    switch (alias) {
+      case 'help':
+        print('help · version · date · apps · open <app> · theme <name> · profile <name>');
+        print('wallpaper <id> · dnd on|off · sound on|off · echo <text> · clear · neofetch');
+        break;
+      case 'version': print(`NOVA OS ${NOVA_VERSION}`); break;
+      case 'date': print(new Date().toString()); break;
+      case 'apps': print(allAppIds().map((id) => APPS[id].name).join(' · ')); break;
+      case 'open': {
+        const target = Object.values(APPS).find((a) => a.id === arg || a.name === arg);
+        if (target) { print(`فتح ${target.name}…`); ctx.openApp?.(target.id, null); }
+        else print(`لا يوجد تطبيق باسم «${arg}»`, 'term__line--err');
+        break;
+      }
+      case 'theme':
+        if (THEMES[arg]) { setTheme(arg); print(`المحور: ${THEMES[arg].label}`); }
+        else print(`الثيمات المتاحة: ${Object.keys(THEMES).join(' · ')}`, 'term__line--err');
+        break;
+      case 'profile':
+        if (PROFILES[arg]) { setProfile(arg); print(`الوضع: ${PROFILES[arg].label}`); }
+        else print(`الوضعات: ${Object.keys(PROFILES).join(' · ')}`, 'term__line--err');
+        break;
+      case 'wallpaper':
+        if (WALLPAPERS[arg]) { setWallpaper(arg); print(`الخلفية: ${WALLPAPERS[arg].label}`); }
+        else print(`المشاهد: ${Object.keys(WALLPAPERS).join(' · ')}`, 'term__line--err');
+        break;
+      case 'dnd': {
+        const on = arg === 'on' || arg === 'on'.toLowerCase() || arg === 'نعم';
+        const next = arg === 'off' ? false : arg === 'on' ? true : !state.dnd;
+        setDnd(next); print(`عدم الإزعاج: ${next ? 'مفعّل' : 'مطفأ'}`);
+        void on;
+        break;
+      }
+      case 'sound': {
+        const next = arg === 'off' ? false : arg === 'on' ? true : !soundOn();
+        setSoundOn(next); print(`الصوت: ${next ? 'مسموع' : 'صامت'}`);
+        break;
+      }
+      case 'echo': print(arg); break;
+      case 'clear': out.replaceChildren(); break;
+      case 'neofetch': systemInfo(); break;
+      default: print(`أمر غير معروف: ${head} — جرّب help`, 'term__line--err');
+    }
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); run(input.value); input.value = ''; }
+  });
+
+  print(`NOVA OS ${NOVA_VERSION} — الطرفية`);
+  print('اكتب help لأوامر النظام · لا شيء يغادر جهازك');
+
+  return h('div', { class: 'term' }, out,
+    h('form', {
+      class: 'term__form', dataset: { nodrag: '1' },
+      onsubmit: (e) => { e.preventDefault(); run(input.value); input.value = ''; },
+    }, h('span', { class: 'term__prompt' }, '›'), input),
+  );
+}
+
 /* ── full surface ──────────────────────────────────────────────── */
 export function buildApp(appId, ctx = {}) {
   const meta = appMeta(appId);
@@ -1090,10 +1295,19 @@ export function buildApp(appId, ctx = {}) {
     onclick: () => ctx.onCollapse?.(),
   });
 
+  const close = h('button', {
+    class: 'app__close',
+    dataset: { nodrag: '1' },
+    title: 'إغلاق',
+    html: icon('close', 'ico ico--sm'),
+    onclick: () => ctx.onHome?.(),
+  });
+
   const chrome = h('div', { class: 'app__chrome' },
     h('span', { style: { color: meta.color }, html: icon(meta.icon, 'ico') }),
     h('span', { class: 't' }, h('b', {}, meta.title || meta.name), h('span', {}, meta.titleSub || meta.sub)),
     collapse,
+    close,
   );
 
   const el = h('div', { class: 'app', dataset: { app: appId }, style: { '--nv-accent': meta.color } }, chrome, body);

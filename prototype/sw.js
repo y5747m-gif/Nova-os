@@ -7,7 +7,7 @@
    NOVA_VERSION must match src/core/version.js and /VERSION.
    ══════════════════════════════════════════════════════════════ */
 
-const NOVA_VERSION = '0.8.2';
+const NOVA_VERSION = '0.9.0';
 const CACHE = `nova-shell-${NOVA_VERSION}`;
 
 const SHELL = [
@@ -42,6 +42,7 @@ const SHELL = [
   './src/surfaces/flow.js',
   './src/surfaces/orb.js',
   './src/surfaces/canvas.js',
+  './src/surfaces/dock.js',
   './src/surfaces/control.js',
   './src/surfaces/lock.js',
   './src/surfaces/split.js',

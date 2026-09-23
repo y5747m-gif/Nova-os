@@ -231,3 +231,48 @@ event must produce a consistent motion + sound + haptic triple.
 
 `Cinematic · Balanced · Fast · Reduced Motion` — the user chooses, and every subsystem must
 honour it (motion, parallax, blur, orb drift, sound density).
+
+## 21. Desktop (computers) — the shell flips, the features grow
+
+**Trigger.** `?shell=desktop`, hotkey `D`, or a window ≥ 1200 px wide. `?shell=web` / `D` returns
+to the phone frame; the choice is written back to the URL (`history.replaceState`) so a reload
+keeps it. The native APK shell (`?shell=app`) never flips.
+
+**Stage.** In the desktop shell the device frame, notch and caption disappear: NOVA **fills the
+window** (`.stage` stretches, `.device` loses its chrome, `.screen` is square). Surfaces keep the
+same model — only the canvas around them grows.
+
+**Control deck → overlay.** The deck leaves the flex flow and becomes a fixed panel on the left.
+A spring drives `translateX`: `deckP −1` = closed (`data-deck="closed"`, pointer-events off),
+`0` = open. `NOVA.toggleDeck()` and the *لوحة NOVA* tool flip it; in the phone shell the transform
+is cleared and the deck is the familiar column again.
+
+**NOVA dock.** A macOS-style bar (`surfaces/dock.js`) inside `#screen`, shown **only** when
+`body[data-shell="desktop"]`: brand · favourite apps (WhatsApp, Gallery, Terminal, Calculatrice,
+Settings) · separators · the open windows (from `state.windows`, re-rendered on `windows`/`focus`
+notifications) · a *كل التطبيقات* door into CORE. Clicking a dock icon opens/focuses that app.
+
+**Keyboard parity.** Every gesture zone has a key (README table), plus `?` — a help overlay
+listing them all (`Esc` or ✕ closes it, `NovaBack` prioritises it), `N` — Do Not Disturb, and
+`D` — shell flip. `INPUT`/`TEXTAREA` targets are ignored; plain letters only (no modifiers).
+
+**Feature pack (all shells, keyboard/mouse-first on desktop):**
+
+- **Windows on CANVAS**: every window head has *maximize* (double-click too — transform-only
+  spring, never width/height) and *close*; the empty canvas resets zoom on double-click.
+- **Wheel zoom**: `wheel` over CANVAS zooms the space (`dataset.zoom`, 0.6–1.5), pan stays springy.
+- **Real battery**: `navigator.getBattery` drives the status-bar percentage/charging bolt when the
+  platform offers it (desktop Chrome/Android); the demo 72 % remains the fallback.
+- **Do Not Disturb**: moon node in CONTROL (hotkey `N`, terminal `dnd on|off`), persisted
+  (`nova.dnd.v1`). Events arrive with `quiet: true`: FLOW shows a banner + quiet cards and the
+  **orb never appears**, even while media plays.
+- **Sound + reduce-motion nodes**: the CONTROL sound node flips the real `setSoundOn` flag; the
+  *حركة أقل* node switches the motion profile in one tap.
+- **Notes & Tasks are real editors**, persisted on the device (`nova.notes.v1`, `nova.tasks.v1`):
+  create/edit/delete notes, quick-add tasks with Enter + a live counter.
+- **Calculator tape**: the last four operations ride above the display.
+- **Terminal (new app)**: `help · version · date · apps · open · theme · profile · wallpaper ·
+  dnd · sound · echo · clear · neofetch` — every command touches the live system.
+- **Pinned home cards**: long-press a card (550 ms) to pin it to the front — persisted
+  (`nova.pinned.v1`), pin badge included; long-press again to unpin. The press-click is swallowed.
+- **App chrome close button**: ✕ next to minimise returns straight home.

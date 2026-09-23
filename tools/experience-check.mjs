@@ -134,6 +134,14 @@ globalThis.fetch = async (url, opts) => {
 };
 window.fetch = globalThis.fetch;
 
+/* the Battery Status API ships on desktop Chrome: pin a deterministic level
+   so the status bar assertion below is stable (jsdom itself has no getBattery). */
+Object.defineProperty(window.navigator, 'getBattery', {
+  value: async () => ({ level: 0.64, charging: false, addEventListener() {} }),
+  configurable: true,
+  writable: true,
+});
+
 await import(`file://${ROOT}/src/main.js`);
 await new Promise((r) => setTimeout(r, 300));
 
@@ -515,6 +523,265 @@ await new Promise((r) => setTimeout(r, 450));
 }
 await goHome();
 
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP + FEATURE PACK (0.9) — shell flip · dock · help · DND ·
+   keyboard parity · real editors · terminal · zoom · pinning
+   ══════════════════════════════════════════════════════════════ */
+await goHome();
+const screenEl2 = window.document.getElementById('screen');
+const tapKey = (key) => screenEl2.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
+
+/* real battery through navigator.getBattery (stubbed above) */
+check('battery: the real level reaches the status bar (64%)',
+  (window.document.getElementById('statusbar')?.textContent || '').includes('64%'),
+  window.document.getElementById('statusbar')?.textContent);
+
+/* the web shell stays the phone; the desktop tools wait in the DOM */
+check('shell boots as the phone web shell', window.document.body.dataset.shell === 'web', window.document.body.dataset.shell);
+check('desk tools rendered for the computer shell', !!window.document.querySelector('.stage .desk-tools'));
+check('dock element present (CSS gates it to desktop)', !!window.document.querySelector('#layer-overlay .dock')
+  && window.document.querySelectorAll('.dock__btn').length >= 6,
+  String(window.document.querySelectorAll('.dock__btn').length));
+check('NOVA exposes the shell controls',
+  typeof N.setShell === 'function' && typeof N.toggleHelp === 'function'
+  && typeof N.toggleDeck === 'function' && typeof N.dnd === 'function');
+
+N.setShell('desktop');
+await new Promise((r) => setTimeout(r, 80));
+check('setShell(desktop) fills the window', window.document.body.dataset.shell === 'desktop'
+  && window.location.search.includes('shell=desktop'), window.location.search);
+check('the deck reads closed until asked for', window.document.body.dataset.deck === 'closed');
+N.setShell('web');
+await new Promise((r) => setTimeout(r, 80));
+check('setShell(web) returns to the phone frame', window.document.body.dataset.shell === 'web'
+  && !window.location.search.includes('shell=desktop'), window.location.search);
+
+/* `?` keyboard help */
+tapKey('?');
+await new Promise((r) => setTimeout(r, 60));
+check('? opens the keyboard help overlay', !!window.document.querySelector('.help')
+  && window.document.querySelectorAll('.help__row').length >= 15,
+  String(window.document.querySelectorAll('.help__row').length));
+check('help documents the desktop keys',
+  (window.document.querySelector('.help')?.textContent || '').includes('حاسوب')
+  && (window.document.querySelector('.help')?.textContent || '').includes('عدم الإزعاج'));
+tapKey('Escape');
+{
+  /* the close spring fades the overlay out — poll until the node is gone */
+  let gone = false;
+  for (let i = 0; i < 30 && !gone; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    gone = !window.document.querySelector('.help');
+  }
+  check('Esc closes the help overlay', gone);
+}
+
+/* keyboard parity: T → CONTROL, and the sound node really flips the audio */
+tapKey('t');
+await new Promise((r) => setTimeout(r, 400));
+check('hotkey T opens NOVA CONTROL', N.state.panel === 'control', String(N.state.panel));
+{
+  const snd = await import(`file://${ROOT}/src/core/sound.js`);
+  const before = snd.soundOn();
+  window.document.querySelector('.control__node[data-node="sound"]')
+    ?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  check('the CONTROL sound node flips the real audio flag', snd.soundOn() !== before,
+    `${before} → ${snd.soundOn()}`);
+  window.document.querySelector('.control__node[data-node="sound"]')
+    ?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  const reduceNode = window.document.querySelector('.control__node[data-node="reduce"]');
+  reduceNode?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  check('the CONTROL reduce-motion node switches the profile',
+    window.document.body.dataset.profile === 'reduced', window.document.body.dataset.profile);
+  reduceNode?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+}
+tapKey('Escape');
+await new Promise((r) => setTimeout(r, 400));
+
+/* DND: hotkey N → quiet events, FLOW banner, no orb */
+check('DND starts off', N.dnd() === false, String(N.dnd()));
+tapKey('n');
+await new Promise((r) => setTimeout(r, 120));
+check('hotkey N arms Do Not Disturb', N.dnd() === true, String(N.dnd()));
+check('a DND state persists on the device', window.localStorage.getItem('nova.dnd.v1') === 'true',
+  String(window.localStorage.getItem('nova.dnd.v1')));
+N.runAction('media');                 // media on: normally every event becomes an orb
+await new Promise((r) => setTimeout(r, 900));
+check('media is playing before the quiet event', N.state.mediaPlaying === true);
+N.state.orb = null;               // clear any orb left over from the golden flows
+N.runAction('event');
+await new Promise((r) => setTimeout(r, 300));
+{
+  const last = N.state.events[0]; // pushEvent unshifts: the newest event leads
+  check('events arriving in DND are marked quiet', last.quiet === true, JSON.stringify(!!last.quiet));
+  check('DND suppresses the orb even while media plays', !N.state.orb,
+    N.state.orb ? 'orb shown' : 'silent');
+}
+N.openPanel('flow');
+await new Promise((r) => setTimeout(r, 450));
+check('FLOW shows the DND banner', !window.document.querySelector('.flow__dnd').classList.contains('hidden'));
+check('quiet events render as quiet cards', window.document.querySelectorAll('.event-card--quiet').length >= 1,
+  String(window.document.querySelectorAll('.event-card--quiet').length));
+N.closePanel();
+await new Promise((r) => setTimeout(r, 400));
+tapKey('n');
+await new Promise((r) => setTimeout(r, 120));
+check('hotkey N disarms DND', N.dnd() === false);
+N.runAction('event');
+await new Promise((r) => setTimeout(r, 200));
+check('events are loud again once DND is off', !N.state.events[0].quiet);
+N.state.mediaPlaying = false;
+
+/* notes — a real persisted editor */
+N.openApp('notes', null);
+await new Promise((r) => setTimeout(r, 700));
+check('notes opens its list', !!window.document.querySelector('#layer-apps .nt__row'));
+window.document.querySelector('#layer-apps .nt__new')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await new Promise((r) => setTimeout(r, 150));
+const ntTitle = window.document.querySelector('#layer-apps .nt__title');
+check('notes has a real editor surface', !!ntTitle && !!window.document.querySelector('#layer-apps .nt__area'));
+if (ntTitle) {
+  ntTitle.value = 'مذكرة سطح المكتب';
+  ntTitle.dispatchEvent(new window.Event('input', { bubbles: true }));
+}
+check('notes persist on the device',
+  String(window.localStorage.getItem('nova.notes.v1') || '').includes('مذكرة سطح المكتب'),
+  (window.localStorage.getItem('nova.notes.v1') || 'null').slice(0, 60));
+N.back();
+await new Promise((r) => setTimeout(r, 900));
+
+/* tasks — quick add + persistence */
+N.openApp('tasks', null);
+await new Promise((r) => setTimeout(r, 700));
+const tskIn = window.document.querySelector('#layer-apps .tsk__in');
+const tskRows = () => window.document.querySelectorAll('#layer-apps .tsk__row').length;
+const rowsBefore = tskRows();
+check('tasks shows its counter', !!window.document.querySelector('#layer-apps .tsk__count'));
+if (tskIn) {
+  tskIn.value = 'تجربة من الحاسوب';
+  tskIn.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+}
+check('tasks quick-add inserts a row', tskRows() === rowsBefore + 1, `${rowsBefore} → ${tskRows()}`);
+check('tasks persist on the device',
+  String(window.localStorage.getItem('nova.tasks.v1') || '').includes('تجربة من الحاسوب'),
+  (window.localStorage.getItem('nova.tasks.v1') || 'null').slice(0, 60));
+N.back();
+await new Promise((r) => setTimeout(r, 900));
+
+/* calculator — history tape */
+N.openApp('calc', null);
+await new Promise((r) => setTimeout(r, 700));
+{
+  const key = (label) => [...window.document.querySelectorAll('#layer-apps .calc__key')]
+    .find((k) => k.textContent.trim() === label);
+  key('7')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  key('×')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  key('8')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  key('=')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+  check('calculator keeps a history tape', window.document.querySelectorAll('#layer-apps .calc__line').length >= 1,
+    String(window.document.querySelectorAll('#layer-apps .calc__line').length));
+}
+N.back();
+await new Promise((r) => setTimeout(r, 900));
+
+/* terminal — the new app, real commands */
+N.openApp('terminal', null);
+await new Promise((r) => setTimeout(r, 700));
+const termIn = window.document.querySelector('#layer-apps .term__in');
+check('terminal opens with a prompt', !!termIn && !!window.document.querySelector('#layer-apps .term__out'));
+if (termIn) {
+  termIn.value = 'echo nova-desktop';
+  termIn.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+}
+check('terminal runs commands', (window.document.querySelector('#layer-apps .term__out')?.textContent || '')
+  .includes('nova-desktop'));
+if (termIn) {
+  termIn.value = 'neofetch';
+  termIn.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await new Promise((r) => setTimeout(r, 80));
+}
+check('terminal neofetch reports the live system',
+  (window.document.querySelector('#layer-apps .term__out')?.textContent || '').includes('NOVA OS'),
+  (window.document.querySelector('#layer-apps .term__out')?.textContent || '').slice(0, 40));
+N.back();
+await new Promise((r) => setTimeout(r, 900));
+
+/* CANVAS — wheel zoom + window close/maximize */
+N.runAction('resume');
+await new Promise((r) => setTimeout(r, 500));
+N.showCanvas();
+await new Promise((r) => setTimeout(r, 400));
+const canvasEl2 = window.document.querySelector('#layer-canvas .canvas');
+check('canvas restored windows for the desktop tests', window.document.querySelectorAll('#layer-canvas .win').length >= 1,
+  String(window.document.querySelectorAll('#layer-canvas .win').length));
+canvasEl2?.dispatchEvent(new window.WheelEvent('wheel', { deltaY: -260, bubbles: true, cancelable: true }));
+await new Promise((r) => setTimeout(r, 60));
+check('wheel zooms the space', canvasEl2 && canvasEl2.dataset.zoom !== '1.00', canvasEl2?.dataset.zoom);
+{
+  const wins = window.document.querySelectorAll('#layer-canvas .win');
+  check('windows expose close + maximize controls',
+    !!wins[0]?.querySelector('.win__btn--close') && !!wins[0]?.querySelector('.win__btn--max'));
+  const countBefore = wins.length;
+  wins[0]?.querySelector('.win__btn--max')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  check('maximize engages', !!window.document.querySelector('#layer-canvas .win--max'));
+  window.document.querySelector('#layer-canvas .win--max .win__btn--max')
+    ?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 400));
+  check('maximize restores', !window.document.querySelector('#layer-canvas .win--max'));
+  window.document.querySelector('#layer-canvas .win .win__btn--close')
+    ?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 300));
+  check('window close removes the window',
+    window.document.querySelectorAll('#layer-canvas .win').length === countBefore - 1,
+    `${countBefore} → ${window.document.querySelectorAll('#layer-canvas .win').length}`);
+}
+await goHome();
+
+/* app chrome gets a close button that goes home */
+N.openApp('gallery', null);
+await new Promise((r) => setTimeout(r, 700));
+check('app chrome shows the close button', !!window.document.querySelector('#layer-apps .app__close'));
+window.document.querySelector('#layer-apps .app__close')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+await new Promise((r) => setTimeout(r, 1200));
+check('the chrome close button returns home', N.state.surface === 'home', N.state.surface);
+
+/* long-press pins a home card (persisted) */
+await goHome();
+{
+  const pinCard0 = window.document.querySelector('#layer-home .app-card[data-app="notes"]')
+    || window.document.querySelector('#layer-home .app-card');
+  const appId = pinCard0?.dataset?.app;
+  pinCard0?.dispatchEvent(mkEv('pointerdown', { clientX: 90, clientY: 520, bubbles: true, cancelable: true, pointerId: 21 }));
+  await new Promise((r) => setTimeout(r, 640));
+  pinCard0?.dispatchEvent(mkEv('pointerup', { clientX: 90, clientY: 520, bubbles: true, cancelable: true, pointerId: 21 }));
+  await new Promise((r) => setTimeout(r, 200));
+  /* togglePin() rebuilds the card grid — re-query the live element */
+  const pinCard = window.document.querySelector(`#layer-home .app-card[data-app="${appId}"]`);
+  check('long-press pins the card', !!pinCard && pinCard.classList.contains('app-card--pinned'), appId);
+  check('the pin badge shows', !!pinCard?.querySelector('.app-card__pin'));
+  check('pins persist on the device',
+    String(window.localStorage.getItem('nova.pinned.v1') || '').includes(String(appId)),
+    window.localStorage.getItem('nova.pinned.v1'));
+  /* the browser would fire a click right after the long-press — it must be swallowed */
+  pinCard?.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+  await new Promise((r) => setTimeout(r, 250));
+  check('a pinned click does not reopen the app', N.state.surface === 'home', N.state.surface);
+  /* unpin so the rest of the suite sees the default home */
+  pinCard?.dispatchEvent(mkEv('pointerdown', { clientX: 90, clientY: 520, bubbles: true, cancelable: true, pointerId: 22 }));
+  await new Promise((r) => setTimeout(r, 640));
+  pinCard?.dispatchEvent(mkEv('pointerup', { clientX: 90, clientY: 520, bubbles: true, cancelable: true, pointerId: 22 }));
+  await new Promise((r) => setTimeout(r, 200));
+  const pinCard2 = window.document.querySelector(`#layer-home .app-card[data-app="${appId}"]`);
+  check('long-press again unpins', !!pinCard2 && !pinCard2.classList.contains('app-card--pinned'));
+}
+await goHome();
+
 /* the service worker file must match the shipped version */
 const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
 const core = fs.readFileSync(path.join(ROOT, 'src/core/version.js'), 'utf8');
@@ -527,7 +794,7 @@ check('manifest icons exist', ['icon-192.png', 'icon-512.png', 'icon-maskable-51
 check('fx.css is linked (the loaded stylesheets cover every surface)', fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').includes('styles/fx.css'));
 {
   const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  const mustCache = ['./styles/fx.css', './src/core/launcher.js', './src/core/wallpaper.js', './src/motion/fx.js', './src/surfaces/setup.js', './src/surfaces/launch.js'];
+  const mustCache = ['./styles/fx.css', './src/core/launcher.js', './src/core/wallpaper.js', './src/motion/fx.js', './src/surfaces/setup.js', './src/surfaces/launch.js', './src/surfaces/dock.js'];
   check('sw.js precaches every runtime module', mustCache.every((u) => swSrc.includes(`'${u}'`)),
     mustCache.filter((u) => !swSrc.includes(`'${u}'`)).join(',') || 'all present');
 }
