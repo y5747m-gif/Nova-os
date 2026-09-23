@@ -220,6 +220,15 @@ function localChecks() {
   check('version.js matches VERSION', versionJs.includes(`NOVA_VERSION = '${version}'`), version);
   check('sw.js matches VERSION', swSrc.includes(`NOVA_VERSION = '${version}'`), version);
 
+  /* Vercel must publish the actual app, not the repository redirect page. */
+  try {
+    const config = JSON.parse(read(path.join(ROOT, 'vercel.json')));
+    check('Vercel publishes prototype/ without a framework build',
+      config.outputDirectory === 'prototype' && config.framework === null && config.buildCommand === '');
+  } catch (e) {
+    bad('Vercel configuration is valid JSON', e.message);
+  }
+
   /* 5 · the workflow contract (the pipeline must keep its promises) */
   const pagesYml = read(path.join(ROOT, '.github/workflows/pages.yml'));
   const apkYml = read(path.join(ROOT, '.github/workflows/apk.yml'));
@@ -240,8 +249,11 @@ async function liveChecks() {
 
   /* 1 · GitHub Pages must be switched on with Actions as its source —
         the silent misconfiguration that makes every deploy fail. */
-  const pages = await ghApi(`/repos/${REPO}/pages`);
-  if (pages === null) {
+  const isPages = new URL(SITE).hostname.endsWith('.github.io');
+  const pages = isPages ? await ghApi(`/repos/${REPO}/pages`) : null;
+  if (!isPages) {
+    skip('GitHub Pages configuration (target is another host)');
+  } else if (pages === null) {
     skip('GitHub Pages is enabled (needs GH_TOKEN/GITHUB_TOKEN to verify)');
   } else if (pages.__status === 404) {
     bad('GitHub Pages is enabled',
@@ -292,6 +304,7 @@ async function selftest() {
   fs.cpSync(PROTO, scratch, { recursive: true });
   // the scratch tree needs the files outside prototype/ the local gate reads
   fs.cpSync(path.join(REPO_ROOT, 'VERSION'), path.join(tmp, 'VERSION'));
+  fs.cpSync(path.join(REPO_ROOT, 'vercel.json'), path.join(tmp, 'vercel.json'));
   fs.mkdirSync(path.join(tmp, '.github/workflows'), { recursive: true });
   fs.cpSync(path.join(REPO_ROOT, '.github/workflows/pages.yml'), path.join(tmp, '.github/workflows/pages.yml'));
   fs.cpSync(path.join(REPO_ROOT, '.github/workflows/apk.yml'), path.join(tmp, '.github/workflows/apk.yml'));
@@ -300,6 +313,11 @@ async function selftest() {
     { encoding: 'utf8' });
 
   const cases = [
+    {
+      name: 'Vercel publishes the wrong directory',
+      break: () => fs.writeFileSync(path.join(tmp, 'vercel.json'), '{"outputDirectory":"missing"}'),
+      expect: 'Vercel publishes prototype/',
+    },
     {
       name: 'a referenced file disappears (styles/fx.css)',
       break: () => fs.rmSync(path.join(scratch, 'styles/fx.css')),
@@ -322,6 +340,7 @@ async function selftest() {
   for (const c of cases) {
     fs.rmSync(scratch, { recursive: true, force: true });
     fs.cpSync(PROTO, scratch, { recursive: true });
+    fs.cpSync(path.join(REPO_ROOT, 'vercel.json'), path.join(tmp, 'vercel.json'));
     c.break();
     const res = runGate();
     const red = res.status !== 0 && (res.stdout + res.stderr).includes(c.expect);

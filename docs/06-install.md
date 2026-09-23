@@ -8,7 +8,7 @@
 
 ## 1. Path A — install as an app right now (PWA)
 
-**The NOVA URL** — either deployment works, both publish the same `prototype/` tree:
+**The NOVA URL** — both hosts publish the same `prototype/` tree once configured:
 
 - <https://y5747m-gif.github.io/Nova-os/> — GitHub Pages, published by `.github/workflows/pages.yml`
   on every push that touches the prototype (the workflow runs the quality gates first; a broken
@@ -16,8 +16,9 @@
   (`tools/deploy-check.mjs --live`) fetches the site and asserts the pushed version is what
   answers — the deploy only counts when proven delivered. One-time repo setup: **Settings →
   Pages → Source = GitHub Actions** (if it is off, every deploy fails and the harness names the fix).
-- <https://nova-os-topaz-rho.vercel.app> — Vercel Production, auto-built from `main`
-  (`vercel.json` serves `prototype/` as the site root).
+- **Vercel:** use the production domain in the
+  [project dashboard](https://vercel.com/y5747m-gif/nova-os), not an old deployment URL.
+  See [Vercel recovery](#vercel-recovery) if it returns 404 or a login screen.
 
 The repository root also carries a tiny `index.html` that forwards to `prototype/`, so hosting the
 repo itself on any static host still lands in NOVA instead of a 404.
@@ -278,3 +279,38 @@ bash tools/stage-assets.sh           # re-stage for a local APK build
 
 The Gradle `versionName` reads `/VERSION`, the CI names the APK `nova-os-v<version>.apk`, and the
 in-app sheet shows the running version — so a released asset is always traceable to a commit.
+
+
+## Vercel recovery
+
+On 2026-09-23 the previously documented `nova-os-topaz-rho.vercel.app` domain
+returned **404 DEPLOYMENT_NOT_FOUND**. GitHub reported a successful Vercel
+production deployment, but its generated URL required Vercel login. This is a
+domain/access configuration issue, not evidence of a missing application route.
+A catch-all rewrite cannot repair a domain that is not attached to a deployment.
+
+1. Open the Vercel project **nova-os** in team **y5747m-gif**.
+2. In **Settings → Build and Deployment**, use repository root as Root Directory,
+   framework **Other**, no build command, and Output Directory **prototype**.
+   The checked-in `vercel.json` declares the static output settings.
+3. In **Deployments**, choose the successful deployment for the intended commit.
+   A push to `arena/**` creates a Preview when Git integration is enabled; it does
+   not update Production automatically. Promote the reviewed deployment to
+   Production, or merge its pull request into the configured production branch.
+4. In **Settings → Domains**, copy the actual production domain. If you need the
+   old domain, add/assign it to this project if Vercel allows it; do not assume
+   that a generated domain is still assigned. Update the GitHub repository's
+   Website field if it still points to the old URL.
+5. In **Settings → Deployment Protection**, ensure Production is publicly
+   accessible if this is intended to be a public site. Test while signed out.
+6. Verify `/`, `/sw.js`, and `/manifest.webmanifest` return HTTP 200, and that the
+   first page is NOVA rather than a Vercel login or error page:
+
+   ```bash
+   npm run check:deploy:live -- --site https://YOUR-PRODUCTION-DOMAIN/
+   ```
+
+GitHub Pages is independent: enable **Settings → Pages → Source: GitHub Actions**
+with a repository administrator account before expecting its URL to work.
+Neither changing application JavaScript nor pushing a Preview repairs these
+account-level host settings. Never put Vercel tokens in this repository.
