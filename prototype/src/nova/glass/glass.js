@@ -140,8 +140,9 @@ export class NovaGlassSurface {
       el.style.boxShadow = `0 ${4 * this.options.depth}px ${18 * this.options.depth}px rgba(0,0,0,${cfg.shadow})`;
     }
     
-    // GPU acceleration
-    el.style.willChange = 'transform, opacity';
+    // GPU-friendly compositing without pinning every glass surface in a
+    // permanent will-change layer (which can increase GPU memory usage).
+    el.classList.add('nova-glass-layer');
     el.style.transform = 'translateZ(0)';
     
     // Clipped surface optimization
@@ -150,6 +151,7 @@ export class NovaGlassSurface {
       el.style.overflow = 'hidden';
     }
     
+    el.style.setProperty('--nv-glass-blur-effective', `${canBlur ? cfg.blur : 0}px`);
     el.dataset.glass = cfg.id;
     el.dataset.glassDepth = String(this.options.depth);
   }
