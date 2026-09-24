@@ -165,7 +165,7 @@ function musicContent(ctx, meta) {
       ctx.emit?.(playing.v ? 'open' : 'close');
     },
   });
-  const art = h('div', { class: 'mu__art' }, h('span', {}, '◉'));
+  const art = h('div', { class: 'mu__art' }, h('img', { src: 'icons/icon-192.png', alt: '' }));
   setTimeout(() => ctx.onMedia?.(true), 0);
   return h('div', { class: 'mu' },
     art,
@@ -449,7 +449,7 @@ function settingsContent(ctx) {
         ctx.emit?.('tick');
       },
     },
-      h('span', { class: 'set__logo' }, '◉'),
+      h('span', { class: 'set__logo' }, h('img', { src: 'icons/icon-192.png', alt: '' })),
       h('div', { class: 'set__meta' }, h('b', {}, h('span', { class: 'set__brand', text: 'NOVA OS' })), h('span', {}, `v${NOVA_VERSION} · كل شيء على جهازك`)),
     ),
 

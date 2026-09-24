@@ -111,6 +111,7 @@ export function playAppLaunch({ srcRect, appId, overlay, screen, fx, onPop }) {
     /* NOVA OS — a dazzling shine at the heart of the screen */
     try {
       const brand = h('div', { class: 'launch__brand' },
+        h('img', { class: 'launch__brand-mark', src: 'icons/icon-192.png', alt: '' }),
         h('span', { class: 'launch__word', text: 'NOVA OS' }),
         h('i', { class: 'launch__star launch__star--a', text: '✦' }),
         h('i', { class: 'launch__star launch__star--b', text: '✦' }),

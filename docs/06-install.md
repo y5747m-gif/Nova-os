@@ -12,12 +12,12 @@
 values live in [`urls.json`](urls.json) (one place, machine-gated by `npm run check:deploy`);
 if this list and that file ever disagree, the file is right and CI is red:
 
-- <https://y5747m-gif.github.io/Nova-os/> — GitHub Pages, published by `.github/workflows/pages.yml`
-  on every push that touches the prototype (the workflow runs the quality gates first; a broken
-  prototype never deploys). After the deploy, the **shipping harness**
-  (`tools/deploy-check.mjs --live`) fetches the site and asserts the pushed version is what
-  answers — the deploy only counts when proven delivered. One-time repo setup: **Settings →
-  Pages → Source = GitHub Actions** (if it is off, every deploy fails and the harness names the fix).
+- <https://y5747m-gif.github.io/Nova-os/> — the currently working, durable GitHub Pages address.
+  As of 2026-09-24 it is public and serving NOVA (the root forwards to `prototype/`). The repo is
+  currently configured for the legacy `main`-branch Pages source; `.github/workflows/pages.yml`
+  runs the quality gates and deploys `prototype/` only after a repo admin switches **Settings →
+  Pages → Source** to **GitHub Actions**. After that switch, the workflow's shipping harness
+  (`tools/deploy-check.mjs --live`) verifies the deployed version instead of assuming it.
 - **Vercel:** use the production domain in the
   [project dashboard](https://vercel.com/y5747m-gif/nova-os), not an old deployment URL.
   See [Vercel recovery](#vercel-recovery) if it returns 404 (or a login screen — a different
@@ -331,16 +331,24 @@ gh api "repos/y5747m-gif/Nova-os/deployments?per_page=12" --jq '.[].id' \
 #     every one of them is a PER-DEPLOYMENT host, none is a project alias
 ```
 
-That second block is the whole diagnosis. Since 2026-09-22 every Vercel deploy of this
+That second block is the Vercel diagnosis. Since 2026-09-22 every Vercel deploy of this
 project finished **successfully** and got a hostname of the shape
-`nova-<id>-y5747m-gif.vercel.app`. The app has been built and served the entire time;
-what is missing is a *name that outlives a deployment*. `nova-os-topaz-rho` was a name of
+`nova-<id>-y5747m-gif.vercel.app`; the latest recorded Production deploy on 2026-09-24
+at 07:46 UTC is `nova-eo4cmznjh-y5747m-gif.vercel.app`. The app has been built and served;
+what Vercel is missing is a *name that outlives a deployment*. `nova-os-topaz-rho` was a name of
 a single old deployment (Vercel's older `<project>-<word>-<word>.vercel.app` minting
 scheme); when that deployment went away — removed, or gone with a deleted/recreated
-project — its hostname stopped resolving, and it will not resolve again until a human
-attaches a domain. GitHub Pages, the other host documented in §1, is not enabled at all
-(`has_pages: false`, and `pages.yml` fails in ~10 s at the self-heal step). So the site
-currently has no durable public address, which is why the dead one keeps getting clicked.
+project — its hostname stopped resolving. Only an account owner attaching a domain in Vercel
+can restore that host or give the project a durable Production domain.
+
+**A stable fallback is live now.** GitHub Pages was provisioned after the earlier failed
+workflow check: the Pages API reports a public HTTPS site using the legacy `main`-branch source,
+and its latest build/deploy succeeded at 08:19 UTC on 2026-09-24. Opening
+<https://y5747m-gif.github.io/Nova-os/> redirects to `/prototype/` and serves NOVA. The old
+Vercel URL is still dead, but the repository now has this durable public address. The
+`pages.yml` Actions workflow failed earlier at its self-heal step, before Pages existed; because
+the current source is still `main` rather than **GitHub Actions**, switch the source in Settings
+before expecting that particular quality-gated workflow to deploy.
 
 ### Repair (once, by an account owner — none of it is code)
 
@@ -358,17 +366,20 @@ currently has no durable public address, which is why the dead one keeps getting
 4. **Publish the durable URL everywhere it is consumed**, and only that one. This is not
    cosmetic: the shipping harness reads the Website field back from GitHub and the deploy job
    goes **red** until it matches a URL in `docs/urls.json` — that is the point, because that
-   field is the one copy of the address that a doc fix can never reach:
+   field is the one copy of the address that a doc fix can never reach. For the already-live
+   GitHub Pages fallback, set the Website field to the declared Pages URL:
    ```bash
-   gh api -X PATCH repos/y5747m-gif/Nova-os -f homepage="https://THE-PRODUCTION-DOMAIN/"
-   # then put the same string in docs/urls.json → production.vercel
+   gh api -X PATCH repos/y5747m-gif/Nova-os -f homepage="https://y5747m-gif.github.io/Nova-os/"
    ```
-   A repo Website field and a README that disagree with the registry is how this incident
-   started: the files were fixed in PR #2 and #13, the GitHub field was not.
-5. **GitHub Pages (§1) is the zero-token fallback** and needs a repo admin once:
-   **Settings → Pages → Source: GitHub Actions**. Then a push touching `prototype/**`
-   publishes it, and the workflow's final step proves the deploy instead of assuming it.
-6. **Prove it**, from a machine that is not signed into Vercel:
+   If you attach a durable Vercel Production domain instead, set `homepage` to that exact URL
+   and add it to `docs/urls.json` → `production.vercel`. A repo Website field and a README that
+   disagree with the registry is how this incident started: the files were fixed in PR #2 and #13,
+   the GitHub field was not.
+5. **GitHub Pages (§1) is the immediate zero-token fallback** and is already serving the app.
+   Its current source is the legacy `main` branch at `/`; the root `index.html` forwards to NOVA.
+   To use the quality-gated `.github/workflows/pages.yml` deployment instead, a repo admin must
+   set **Settings → Pages → Source: GitHub Actions** and rerun the workflow.
+6. **Prove a Vercel domain**, from a machine that is not signed into Vercel:
    ```bash
    npm run check:deploy:live -- --site https://THE-PRODUCTION-DOMAIN/
    node tools/deploy-check.mjs --discover          # what the deploy records really say
