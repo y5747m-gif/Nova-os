@@ -1503,3 +1503,75 @@ body[data-motion="reduced"] * {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════
+   NOVA PERFORMANCE-FIRST VISUAL CONTRACT
+   The UI remains glassy without forcing every surface into a
+   permanent compositor layer. Expensive effects are adaptive.
+   ══════════════════════════════════════════════════════════════ */
+.nova-glass-layer {
+  contain: layout style paint;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+[data-glass] {
+  background: var(--nv-glass, var(--nv-surface));
+  border-color: color-mix(in srgb, var(--nv-text) 10%, transparent);
+}
+
+[data-glass-live="1"] {
+  -webkit-backdrop-filter: blur(var(--nv-glass-blur-effective, 0px)) saturate(1.08);
+  backdrop-filter: blur(var(--nv-glass-blur-effective, 0px)) saturate(1.08);
+}
+
+/* Never animate backdrop-filter itself. Animate opacity/transform instead. */
+.nova-glass-card,
+.nova-glass-panel,
+.nova-glass-button,
+.nova-glass-dialog,
+.nova-glass-navigation,
+.nova-glass-notification,
+.nova-glass-orb,
+[data-glass] {
+  transition-property: transform, opacity, background-color, border-color, box-shadow;
+}
+
+/* High-cost decorative effects are disabled automatically by the performance manager. */
+body[data-performance="performance"] .nova-orb__glow,
+body[data-performance="battery"] .nova-orb__glow,
+body[data-performance="reduced"] .nova-orb__glow {
+  display: none;
+}
+
+body[data-performance="performance"] .nova-shape--crystal,
+body[data-performance="battery"] .nova-shape--crystal,
+body[data-performance="reduced"] .nova-shape--crystal,
+body[data-performance="performance"] .nova-shape--prism,
+body[data-performance="battery"] .nova-shape--prism,
+body[data-performance="reduced"] .nova-shape--prism {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  body[data-glass] [data-glass] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .nova-glass-card,
+  .nova-glass-panel,
+  .nova-glass-dialog {
+    box-shadow: 0 10px 28px rgba(0,0,0,.22);
+  }
+}
