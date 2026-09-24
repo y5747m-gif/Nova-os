@@ -8,7 +8,9 @@
 
 ## 1. Path A — install as an app right now (PWA)
 
-**The NOVA URL** — both hosts publish the same `prototype/` tree once configured:
+**The NOVA URL** — both hosts publish the same `prototype/` tree once configured. The canonical
+values live in [`urls.json`](urls.json) (one place, machine-gated by `npm run check:deploy`);
+if this list and that file ever disagree, the file is right and CI is red:
 
 - <https://y5747m-gif.github.io/Nova-os/> — GitHub Pages, published by `.github/workflows/pages.yml`
   on every push that touches the prototype (the workflow runs the quality gates first; a broken
@@ -18,7 +20,8 @@
   Pages → Source = GitHub Actions** (if it is off, every deploy fails and the harness names the fix).
 - **Vercel:** use the production domain in the
   [project dashboard](https://vercel.com/y5747m-gif/nova-os), not an old deployment URL.
-  See [Vercel recovery](#vercel-recovery) if it returns 404 or a login screen.
+  See [Vercel recovery](#vercel-recovery) if it returns 404 (or a login screen — a different
+  failure with a different switch, and the table there tells them apart).
 
 The repository root also carries a tiny `index.html` that forwards to `prototype/`, so hosting the
 repo itself on any static host still lands in NOVA instead of a 404.
@@ -283,34 +286,116 @@ in-app sheet shows the running version — so a released asset is always traceab
 
 ## Vercel recovery
 
-On 2026-09-23 the previously documented `nova-os-topaz-rho.vercel.app` domain
-returned **404 DEPLOYMENT_NOT_FOUND**. GitHub reported a successful Vercel
-production deployment, but its generated URL required Vercel login. This is a
-domain/access configuration issue, not evidence of a missing application route.
-A catch-all rewrite cannot repair a domain that is not attached to a deployment.
+*How to read a dead URL correctly — this heading is an anchor (`#vercel-recovery`) that
+README and §1 link to, so keep the title itself stable.*
 
-1. Open the Vercel project **nova-os** in team **y5747m-gif**.
-2. In **Settings → Build and Deployment**, use repository root as Root Directory,
-   framework **Other**, no build command, and Output Directory **prototype**.
-   The checked-in `vercel.json` declares the static output settings.
-3. In **Deployments**, choose the successful deployment for the intended commit.
-   A push to `arena/**` creates a Preview when Git integration is enabled; it does
-   not update Production automatically. Promote the reviewed deployment to
-   Production, or merge its pull request into the configured production branch.
-4. In **Settings → Domains**, copy the actual production domain. If you need the
-   old domain, add/assign it to this project if Vercel allows it; do not assume
-   that a generated domain is still assigned. Update the GitHub repository's
-   Website field if it still points to the old URL.
-5. In **Settings → Deployment Protection**, ensure Production is publicly
-   accessible if this is intended to be a public site. Test while signed out.
-6. Verify `/`, `/sw.js`, and `/manifest.webmanifest` return HTTP 200, and that the
-   first page is NOVA rather than a Vercel login or error page:
+> **ملخص عربي:** خطأ `404 DEPLOYMENT_NOT_FOUND` معناه إن الدومتين (الـ host)
+> **غير مربوط بأي deployment** عند Vercel — الطلب بيموت في الراوتر قبل ما يوصل
+> لأي ملف في المستودع. مفيش سطر JavaScript ولا rewrite في `vercel.json` هيعمّل
+> حاجة معاه: العلاج إنك تربط الدومتين الصح بالمشروع (ولأول مرة تكتبها في مكان واحد).
 
+**The three 404s people confuse with each other.** They look identical in a browser
+and have three different owners:
+
+| What the edge answers | Who is talking | What it means | Where the fix lives |
+| --- | --- | --- | --- |
+| `404 DEPLOYMENT_NOT_FOUND` | Vercel's **router** | the hostname maps to no deployment at all | Vercel → Settings → Domains (an account setting) |
+| `404 NOT_FOUND` | Vercel's **static server** | the host resolves, but that path has no file | Root Directory / `outputDirectory` in `vercel.json` |
+| `401` + a login screen | **Deployment Protection** | the deployment exists and is hidden behind Vercel Authentication | Vercel → Settings → Deployment Protection |
+
+`nova-os-topaz-rho.vercel.app` is in the **first** row: the router answered before your
+project was consulted at all. An earlier revision of this section described the same event
+as "a domain/access configuration issue" and mentioned a login wall in the same breath —
+that was row three bleeding into row one, and it sent the repair toward settings that could
+not have helped. **A retired domain has nothing to authenticate against; a login wall means
+the opposite: the deployment is there and is hiding it from you.** The switch you turn is
+different, so tell the two apart before you touch anything.
+
+### What was verified on 2026-09-24
+
+Every claim here is reproducible with `gh` from the repository — no Vercel token, no
+dashboard, nothing to trust but the deploy records GitHub already holds:
+
+```bash
+# 1 · what GitHub thinks the site URL is
+gh api repos/y5747m-gif/Nova-os --jq .homepage
+#   → https://nova-os-topaz-rho.vercel.app        ← the dead link people keep clicking
+
+# 2 · what Vercel actually published, per deploy
+gh api "repos/y5747m-gif/Nova-os/deployments?per_page=12" --jq '.[].id' \
+  | while read -r id; do
+      gh api "repos/y5747m-gif/Nova-os/deployments/$id/statuses" \
+        --jq '.[] | select(.state=="success") | "\(.environment_url)"' | head -1
+    done
+#   → https://nova-fi7oxujwh-y5747m-gif.vercel.app, nova-30qlbewf2-…, nova-3vb2tri97-…
+#     every one of them is a PER-DEPLOYMENT host, none is a project alias
+```
+
+That second block is the whole diagnosis. Since 2026-09-22 every Vercel deploy of this
+project finished **successfully** and got a hostname of the shape
+`nova-<id>-y5747m-gif.vercel.app`. The app has been built and served the entire time;
+what is missing is a *name that outlives a deployment*. `nova-os-topaz-rho` was a name of
+a single old deployment (Vercel's older `<project>-<word>-<word>.vercel.app` minting
+scheme); when that deployment went away — removed, or gone with a deleted/recreated
+project — its hostname stopped resolving, and it will not resolve again until a human
+attaches a domain. GitHub Pages, the other host documented in §1, is not enabled at all
+(`has_pages: false`, and `pages.yml` fails in ~10 s at the self-heal step). So the site
+currently has no durable public address, which is why the dead one keeps getting clicked.
+
+### Repair (once, by an account owner — none of it is code)
+
+1. **Pick the durable address.** Open the Vercel project [nova-os](https://vercel.com/y5747m-gif/nova-os)
+   → **Settings → Domains**. Whatever is listed there for *Production* is the real URL.
+   If nothing is: add a domain (own domain, or accept the `<project>-<team>.vercel.app`
+   production alias Vercel offers). Never adopt a `<project>-<random>-<team>.vercel.app`
+   URL printed by a deploy — that one belongs to one deployment and dies with it.
+2. **Confirm the build settings** in **Settings → Build and Deployment**: Root Directory =
+   repository root, framework **Other**, no build command, Output Directory **prototype**.
+   The checked-in `vercel.json` declares the same, and `npm run check:deploy` fails the
+   build if the two ever disagree.
+3. **Make Production public**: Settings → **Deployment Protection** → off for Production
+   (leave it on for Previews). Test in a private window; a signed-in check proves nothing.
+4. **Publish the durable URL everywhere it is consumed**, and only that one. This is not
+   cosmetic: the shipping harness reads the Website field back from GitHub and the deploy job
+   goes **red** until it matches a URL in `docs/urls.json` — that is the point, because that
+   field is the one copy of the address that a doc fix can never reach:
    ```bash
-   npm run check:deploy:live -- --site https://YOUR-PRODUCTION-DOMAIN/
+   gh api -X PATCH repos/y5747m-gif/Nova-os -f homepage="https://THE-PRODUCTION-DOMAIN/"
+   # then put the same string in docs/urls.json → production.vercel
    ```
+   A repo Website field and a README that disagree with the registry is how this incident
+   started: the files were fixed in PR #2 and #13, the GitHub field was not.
+5. **GitHub Pages (§1) is the zero-token fallback** and needs a repo admin once:
+   **Settings → Pages → Source: GitHub Actions**. Then a push touching `prototype/**`
+   publishes it, and the workflow's final step proves the deploy instead of assuming it.
+6. **Prove it**, from a machine that is not signed into Vercel:
+   ```bash
+   npm run check:deploy:live -- --site https://THE-PRODUCTION-DOMAIN/
+   node tools/deploy-check.mjs --discover          # what the deploy records really say
+   ```
+   `/`, `/sw.js` and `/manifest.webmanifest` must all answer 200, and `/sw.js` must carry
+   the version in `VERSION`. If the harness prints `VERDICT [host-unattached]`, stop: no
+   rewrite or code change can help, the host is still pointing at nothing.
 
-GitHub Pages is independent: enable **Settings → Pages → Source: GitHub Actions**
-with a repository administrator account before expecting its URL to work.
-Neither changing application JavaScript nor pushing a Preview repairs these
-account-level host settings. Never put Vercel tokens in this repository.
+Never put a Vercel token in this repository. Nothing above needs one — `gh api` reads
+the deployment statuses the Vercel GitHub App already writes.
+
+### Why this cannot rot again
+
+- **`docs/urls.json` is the only place a public NOVA URL is allowed to live.** The local
+  gate reads it and rejects any `.vercel.app` / `.github.io` host advertised in
+  `README.md` or `docs/*.md` that is not declared there — so a per-deployment URL can be
+  pasted into a doc at most until the next `npm run check`, which CI runs before every
+  deploy of both the site and the APK. Hosts listed under `retired` may appear only in
+  this section, which is the prose whose job is to explain the corpse.
+- **The live gate proves the other host too.** After deploying one host,
+  `--live` probes the *other* declared production URL once and classifies the answer, and
+  it asks GitHub what the repository's Website field says and whether that page really
+  serves NOVA. An address outside the repo finally has a check inside the repo.
+- **Retries stop when retrying is pointless.** Propagation deserves 4 minutes of
+  patience; `DEPLOYMENT_NOT_FOUND` gets one look and a verdict, because waiting never
+  re-attaches a domain.
+- **Installed PWAs no longer inherit the outage.** `prototype/sw.js` treats a non-2xx
+  navigation response as "the network did not answer" and serves the cached shell, so a
+  home-screen NOVA opened during a host move shows NOVA instead of the platform's 404,
+  and the error page never gets written into the shell cache.

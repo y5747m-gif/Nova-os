@@ -1,0 +1,34 @@
+{
+  "$comment": [
+    "Single source of truth for every public NOVA URL. tools/deploy-check.mjs gates README.md and",
+    "docs/*.md against it (local mode) and proves each entry really answers (live mode).",
+    "",
+    "WHY THIS FILE EXISTS. A Vercel host of the shape",
+    "  <project>-<8 chars>-<team>.vercel.app   or the older   <project>-<word>-<word>.vercel.app",
+    "is the URL of ONE deployment, not an alias of the project. It is minted at deploy time,",
+    "never moves on its own, and stops resolving the moment that deployment is deleted or expires",
+    "(preview retention, 'Remove' in Deployments, deleting and recreating the project). The edge",
+    "router then answers 404 DEPLOYMENT_NOT_FOUND before your files — or any rewrite in",
+    "vercel.json — ever run. So a link like that must never be written into docs, a README, the",
+    "GitHub Website field, or a PWA install URL: it is a bookmark of a wave, not of the shore.",
+    "",
+    "The stable address is the project's PRODUCTION domain (Vercel → Settings → Domains), which is",
+    "a domain the router keeps pointed at whatever deployment is currently production. Put THAT in",
+    "the entry below. Leave 'vercel' empty until a real production domain is attached: an empty",
+    "string is an honest TODO that the harness reports as SKIP; a guessed URL is a lie that will",
+    "one day 404 in someone's face.",
+    "",
+    "'retired' records hosts that used to be advertised and must never come back. They may appear",
+    "in prose only inside the 'Vercel recovery' section of docs/06-install.md (the section whose",
+    "job is explaining the death); anywhere else the local gate turns RED."
+  ],
+  "production": {
+    "githubPages": "https://y5747m-gif.github.io/Nova-os/",
+    "vercel": "",
+    "durableLabels": [],
+    "$durableLabels": "first labels (without .vercel.app) that belong to THIS project's Production alias — for when the Vercel project is not spelled like the repo, list them here, e.g. [nova, nova-web]. Anything else shaped like <project>-<random>-<team> is a per-deployment URL and is refused."
+  },
+  "retired": {
+    "https://nova-os-topaz-rho.vercel.app/": "Vercel-generated URL of a single deployment; 404 DEPLOYMENT_NOT_FOUND since 2026-09-23. Never re-attached to a deployment — see docs/06-install.md#vercel-recovery"
+  }
+}

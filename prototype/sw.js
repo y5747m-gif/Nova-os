@@ -105,8 +105,15 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       try {
         const fresh = await fetch(request);
+        // A resolved fetch is NOT a working site. A host that was moved, expired,
+        // or detached from its deployment answers with the *platform's* error
+        // page and a 404 — and handing that to the page would paint a 404 over
+        // the launcher icon for every installed copy. An error response counts
+        // as "the network did not answer": fall through to the cached shell so
+        // an installed NOVA always opens NOVA, even mid-migration.
+        if (!fresh.ok) throw new Error(`nova:navigation HTTP ${fresh.status}`);
         const cache = await caches.open(CACHE);
-        cache.put('./index.html', fresh.clone());
+        await cache.put('./index.html', fresh.clone());   // awaited + ok-only: Cache.put rejects on 404s
         return fresh;
       } catch {
         const cache = await caches.open(CACHE);
