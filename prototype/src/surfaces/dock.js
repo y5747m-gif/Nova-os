@@ -34,7 +34,7 @@ export function mountDock(layer, ctx = {}) {
     if (state.focusedApp && !openIds.includes(state.focusedApp)) openIds.unshift(state.focusedApp);
 
     const kids = [
-      h('span', { class: 'dock__brand' }, '◉'),
+      h('span', { class: 'dock__brand', 'aria-hidden': 'true' }, h('img', { src: 'icons/icon-192.png', alt: '' })),
       ...FAVORITES.filter((id) => APPS[id]).map((id) => appBtn(id, 'dock__btn--fav')),
       h('i', { class: 'dock__sep' }),
       ...openIds.slice(0, 6).map((id) => appBtn(id, 'dock__btn--open')),

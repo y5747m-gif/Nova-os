@@ -143,7 +143,7 @@ export const NovaOS = {
   control: 'NOVA CONTROL',
   ai: 'NOVA AI',
   security: 'NOVA SECURITY',
-  version: '1.0.0',
+  version: '1.0.1',
   build: 'nova-os-v1',
 };
 
