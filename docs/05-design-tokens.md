@@ -10,12 +10,19 @@
 | `--nv-bg` | `#07080B` | Background / canvas void |
 | `--nv-surface` | `#101218` | Cards, panels |
 | `--nv-elevated` | `#171A22` | Raised windows, dialogs |
-| `--nv-line` | `rgba(244,246,250,.08)` | Hairlines, dividers |
+| `--nv-line` | `rgba(235,241,255,.09)` | Hairlines, dividers |
 | `--nv-text` | `#F4F6FA` | Primary text |
-| `--nv-text-2` | `#8C93A1` | Secondary text, metadata |
-| `--nv-text-3` | `#5A6070` | Disabled, hints |
+| `--nv-text-2` | `#9AA3B3` | Secondary text, metadata |
+| `--nv-text-3` | `#687080` | Disabled, hints |
 | `--nv-accent` | `#6C5CE7` | Primary accent (Nova Violet) |
 | `--nv-accent-2` | `#22D3EE` | Secondary accent (Signal Cyan) |
+
+The NOVA signature is the **orbit mark**: a violet-to-cyan planet crossed by a luminous ring on
+near-black. Keep the mark intact and give it clear space; do not place it on a competing gradient
+or crop the ring. `prototype/icons/nova-icon-source.png` is the master, and
+`bash tools/make-icons.sh` regenerates the PWA and Android density variants. The same mark appears
+in the boot splash, setup welcome, app-launch ritual, settings/music identity, and desktop dock. The
+Android notification glyph is the monochrome vector at `android/app/src/main/res/drawable/ic_nova_stat.xml`.
 
 ## 2. Color — NOVA Paper (light)
 
@@ -71,9 +78,9 @@ blur:   gated, ≤ 12 px, ≤ 2 live layers   (see 02-motion-language.md §10)
 | Level | Shadow | Notes |
 | --- | --- | --- |
 | `flat` | none | Background content |
-| `card` | `0 4px 18px rgba(0,0,0,.35)` | Dark; in Paper: `0 2px 10px rgba(17,19,24,.08)` |
-| `window` | `0 18px 50px rgba(0,0,0,.45)` | Floating world |
-| `panel` | `0 24px 70px rgba(0,0,0,.55)` | CORE / FLOW / CONTROL |
+| `card` | `0 10px 28px rgba(0,0,0,.3)` + hairline | Dark; in Paper: `0 2px 10px rgba(17,19,24,.08)` |
+| `window` | `0 24px 64px rgba(0,0,0,.46)` | Floating world |
+| `panel` | `0 30px 80px rgba(0,0,0,.54)` | CORE / FLOW / CONTROL |
 | `dialog` | `0 30px 90px rgba(0,0,0,.6)` | + 45 % scrim below |
 
 ## 7. Accent packs (mixable with motion themes)

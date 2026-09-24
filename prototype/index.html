@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="styles/fx.css" />
 <link rel="stylesheet" href="styles/install.css" />
 <link rel="stylesheet" href="styles/shell-android.css" />
+<link rel="stylesheet" href="styles/orbit-brand.css" />
 </head>
 <body data-mode="dark" data-shell="web">
 
@@ -61,7 +62,12 @@
         <div class="edge-hint edge-hint--top" id="hint-top" aria-hidden="true"><span></span></div>
         <div class="toast" id="toast" role="status" aria-live="polite"></div>
         <div class="boot" id="boot" aria-hidden="true">
-          <div class="boot__logo"><span>NOVA OS</span><i class="launch__star launch__star--a">✦</i><i class="launch__star launch__star--b">✦</i></div>
+          <div class="boot__logo" aria-label="NOVA OS">
+            <img class="boot__mark" src="icons/icon-192.png" alt="" />
+            <span class="boot__word">NOVA OS</span>
+            <i class="launch__star launch__star--a" aria-hidden="true">✦</i>
+            <i class="launch__star launch__star--b" aria-hidden="true">✦</i>
+          </div>
           <div class="boot__bar"><i></i></div>
           <div class="boot__tag">طريقة جديدة لاستخدام هاتفك</div>
         </div>
@@ -75,7 +81,7 @@
   <!-- ─────────────────────────  CONTROL DECK  ───────────────────────── -->
   <aside class="deck" id="deck">
     <header class="deck__brand">
-      <div class="deck__logo">◉</div>
+      <div class="deck__logo" aria-hidden="true"><img src="icons/icon-192.png" alt="" /></div>
       <div>
         <h1>NOVA OS</h1>
         <p>A New Way to Use Your Phone</p>

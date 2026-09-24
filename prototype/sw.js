@@ -7,7 +7,7 @@
    NOVA_VERSION must match src/core/version.js and /VERSION.
    ══════════════════════════════════════════════════════════════ */
 
-const NOVA_VERSION = '1.0.0';
+const NOVA_VERSION = '1.0.1';
 const CACHE = `nova-shell-${NOVA_VERSION}`;
 
 const SHELL = [
@@ -18,6 +18,7 @@ const SHELL = [
   './styles/nova.css',
   './styles/shell.css',
   './styles/shell-android.css',
+  './styles/orbit-brand.css',
   './styles/surfaces.css',
   './styles/fx.css',
   './styles/install.css',

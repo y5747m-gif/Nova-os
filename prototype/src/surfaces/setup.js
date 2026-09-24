@@ -85,7 +85,7 @@ export function mountSetup(layer, ctx = {}) {
 
     if (step === 'welcome') {
       body.append(
-        h('div', { class: 'setup__logo' }, h('span', {}, '◉')),
+        h('div', { class: 'setup__logo' }, h('img', { src: 'icons/icon-192.png', alt: '', 'aria-hidden': 'true' })),
         h('h2', { class: 'setup__title' }, 'أهلاً بك في NOVA'),
         h('p', { class: 'setup__sub' }, 'طريقة جديدة لاستخدام هاتفك — لنحوّل NOVA إلى واجهة هاتفك الأساسية في أقل من دقيقة.'),
         h('div', { class: 'setup__list' },
