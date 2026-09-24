@@ -74,10 +74,15 @@ Two real paths — full guide in **`docs/06-install.md`**:
   only counts as done once the site is proven to answer with the pushed version. One-time setup:
   the repo must have **Settings → Pages → Source = GitHub Actions** (the harness says exactly this
   when it is missing).
-- **Vercel:** open the production domain shown in the
-  [project dashboard](https://vercel.com/y5747m-gif/nova-os). The previously documented
-  domain returns `DEPLOYMENT_NOT_FOUND`; see [Vercel recovery](docs/06-install.md#vercel-recovery).
-  `vercel.json` serves `prototype/` without a framework or build step.
+- **Vercel:** open the project's **production domain** from
+  [the dashboard](https://vercel.com/y5747m-gif/nova-os) — never a hostname a single deploy
+  printed (those die with their deployment, which is what `404 DEPLOYMENT_NOT_FOUND` means; see
+  [Vercel recovery](docs/06-install.md#vercel-recovery)). `vercel.json` serves `prototype/`
+  without a framework or build step, so the build was never the problem.
+- `npm run url:discover` reads the deploy records GitHub already has and tells you which
+  published URL is durable and which one is already rotting. The durable URLs live in one file,
+  [`docs/urls.json`](docs/urls.json), and `npm run check:deploy` refuses any other host in the
+  README or docs — a broken link you trust is worse than no link.
 
 The working public URL is also what the PWA installs from (`docs/06-install.md` §1).
 
