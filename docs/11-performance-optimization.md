@@ -1,3 +1,4 @@
+[11-performance-optimization.md](https://github.com/user-attachments/files/32613726/11-performance-optimization.md)
 # 11 — Performance & Optimization
 
 > **ملخص عربي:** الأداء أهم من المؤثرات — كل حاجة قابلة للإيقاف، كل مكون له Lifecycle صحيح.
@@ -372,3 +373,13 @@ Not for end user — only developer mode.
 # Assert: UI still responsive (navigation, touch)
 # Assert: after cooling, returns to Balanced
 ```
+
+
+## Stability hardening (2026-09)
+
+- Glass surfaces no longer pin every element with `will-change`; only transform compositing is used where needed.
+- `backdrop-filter` is not animated; only opacity/transform/background/border/shadow transitions are allowed.
+- The performance monitor pauses while the document is hidden and cancels its pending RAF.
+- The Web Battery API is treated as a low-battery visual policy, not as proof that Android Battery Saver is enabled.
+- Text blur is capped by the active performance profile and falls back to a simple transition when blur is disabled.
+- Reduced-motion mode disables continuous decorative animation and live blur.
