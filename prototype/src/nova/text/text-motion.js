@@ -118,7 +118,13 @@ export class NovaTextMotion {
   blurToClear(element, options = {}) {
     if (!element) return;
 
-    const blurMax = options.blur ?? 8;
+    if (performanceManager.shouldReduceMotion() || !performanceManager.shouldUseBlur()) {
+      element.style.filter = '';
+      element.style.opacity = '';
+      return this.fadeTranslate(element, options);
+    }
+
+    const blurMax = Math.min(options.blur ?? 8, performanceManager.getMode().blur || 0);
     element.style.filter = `blur(${blurMax}px)`;
     element.style.opacity = '0.4';
     element.style.willChange = 'filter, opacity';
