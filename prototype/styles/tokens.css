@@ -1,5 +1,8 @@
 /* ══════════════════════════════════════════════════════════════
-   NOVA OS — design tokens (see docs/05-design-tokens.md)
+   NOVA OS — Design Tokens (docs/05-design-tokens.md)
+   Per spec #45-47, #62: Colors, Typography, Spacing, Radius,
+   Elevation, Glass, Motion, Haptics, Sound, Performance
+   Premium, Futuristic, Minimal — Glass + Depth + Light + Motion
    ══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -9,11 +12,22 @@
   --nv-slow: 480ms;
   --nv-long: 650ms;
 
-  /* geometry */
+  /* geometry — NOVA SHAPES per spec #10 */
   --nv-r-chip: 10px;
   --nv-r-card: 22px;
   --nv-r-window: 28px;
   --nv-r-panel: 32px;
+  --nv-r-orb: 999px;
+
+  /* spacing */
+  --nv-space-xs: 4px;
+  --nv-space-sm: 8px;
+  --nv-space-md: 12px;
+  --nv-space-lg: 16px;
+  --nv-space-xl: 20px;
+  --nv-space-xxl: 24px;
+  --nv-space-xxxl: 32px;
+  --nv-space-huge: 48px;
 
   /* accent pack (overridden by JS) */
   --nv-accent: #6c5ce7;
@@ -24,45 +38,76 @@
   --nv-coral: #ff5c5c;
   --nv-ice: #7dd3fc;
 
+  /* glass levels per spec #7 */
+  --nv-glass-clear-blur: 8px;
+  --nv-glass-soft-blur: 14px;
+  --nv-glass-solid-blur: 4px;
+  --nv-glass-ultra-blur: 22px;
+
   --nv-ease: cubic-bezier(.22, 1, .36, 1);
+  --nv-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --nv-ease-smooth: cubic-bezier(.25, .1, .25, 1);
+  
   color-scheme: dark;
 }
 
-/* ── NOVA Dark — deep, soft, never harsh ────────────────────── */
+/* ── NOVA Dark — per spec #45 ──────────────────────────────────
+   Background: #06070A
+   Surface: #0E1117
+   Glass: RGBA low transparency
+   Text: #F4F6FA
+   Secondary: #8B93A1
+   ─────────────────────────────────────────────────────────────── */
 body[data-mode="dark"] {
-  --nv-bg: #07080b;
-  --nv-bg-2: #0b0d13;
-  --nv-surface: #12141b;
-  --nv-elevated: #191c25;
+  --nv-bg: #06070A;
+  --nv-bg-2: #0B0D13;
+  --nv-surface: #0E1117;
+  --nv-elevated: #171A22;
   --nv-line: rgba(244, 246, 250, .08);
   --nv-line-strong: rgba(244, 246, 250, .16);
-  --nv-text: #f4f6fa;
-  --nv-text-2: #9aa2b0;
-  --nv-text-3: #676e7e;
+  --nv-text: #F4F6FA;
+  --nv-text-2: #8B93A1;
+  --nv-text-3: #5A6070;
   --nv-scrim: rgba(4, 5, 8, .55);
-  --nv-shadow-card: 0 6px 24px rgba(0, 0, 0, .30);
-  --nv-shadow-window: 0 18px 50px rgba(0, 0, 0, .42);
-  --nv-shadow-panel: 0 24px 70px rgba(0, 0, 0, .5);
-  --nv-glass: rgba(23, 26, 34, .72);
+  --nv-shadow-card: 0 4px 18px rgba(0,0,0,.35);
+  --nv-shadow-window: 0 18px 50px rgba(0,0,0,.45);
+  --nv-shadow-panel: 0 24px 70px rgba(0,0,0,.55);
+  --nv-shadow-dialog: 0 30px 90px rgba(0,0,0,.6);
+  --nv-glass: rgba(23, 26, 34, .56);
+  --nv-glass-clear: rgba(23, 26, 34, .32);
+  --nv-glass-soft: rgba(23, 26, 34, .56);
+  --nv-glass-solid: rgba(23, 26, 34, .82);
+  --nv-glass-ultra: rgba(23, 26, 34, .64);
   color-scheme: dark;
 }
 
-/* ── NOVA Paper — warm daylight, calm to the eye ────────────── */
+/* ── NOVA Light — per spec #46 ─────────────────────────────────
+   Background: #F4F6F8
+   Surface: #FFFFFF
+   Text: #101217
+   Glass: light transparency
+   Shadows: very soft
+   ─────────────────────────────────────────────────────────────── */
 body[data-mode="light"] {
-  --nv-bg: #f7f2ea;
-  --nv-bg-2: #efe9df;
-  --nv-surface: #fffdf9;
-  --nv-elevated: #fffefb;
-  --nv-line: rgba(28, 24, 18, .10);
-  --nv-line-strong: rgba(28, 24, 18, .18);
-  --nv-text: #1c1a16;
-  --nv-text-2: #6d6457;
-  --nv-text-3: #98907f;
+  --nv-bg: #F4F6F8;
+  --nv-bg-2: #EDE9E2;
+  --nv-surface: #FFFFFF;
+  --nv-elevated: #FFFFFF;
+  --nv-line: rgba(16, 18, 23, .08);
+  --nv-line-strong: rgba(16, 18, 23, .16);
+  --nv-text: #101217;
+  --nv-text-2: #5B6273;
+  --nv-text-3: #98907F;
   --nv-scrim: rgba(30, 24, 16, .32);
-  --nv-shadow-card: 0 4px 16px rgba(60, 45, 20, .09);
-  --nv-shadow-window: 0 14px 38px rgba(60, 45, 20, .14);
-  --nv-shadow-panel: 0 20px 48px rgba(60, 45, 20, .16);
-  --nv-glass: rgba(255, 253, 248, .78);
+  --nv-shadow-card: 0 2px 10px rgba(17,19,24,.08);
+  --nv-shadow-window: 0 14px 38px rgba(17,19,24,.12);
+  --nv-shadow-panel: 0 20px 48px rgba(17,19,24,.16);
+  --nv-shadow-dialog: 0 30px 90px rgba(17,19,24,.18);
+  --nv-glass: rgba(255, 255, 255, .68);
+  --nv-glass-clear: rgba(255, 255, 255, .42);
+  --nv-glass-soft: rgba(255, 255, 255, .68);
+  --nv-glass-solid: rgba(255, 255, 255, .88);
+  --nv-glass-ultra: rgba(255, 255, 255, .72);
   color-scheme: light;
 }
 
@@ -71,20 +116,108 @@ body[data-accent="violet"] { --nv-accent: #6c5ce7; --nv-accent-2: #22d3ee; }
 body[data-accent="aurora"] { --nv-accent: #4ade80; --nv-accent-2: #a78bfa; }
 body[data-accent="orbit"]  { --nv-accent: #f5a524; --nv-accent-2: #6c5ce7; }
 body[data-accent="liquid"] { --nv-accent: #22d3ee; --nv-accent-2: #ff6b9a; }
+body[data-accent="crystal"] { --nv-accent: #7dd3fc; --nv-accent-2: #a78bfa; }
 body[data-accent="neon"]   { --nv-accent: #ff3d81; --nv-accent-2: #00e5ff; }
+
+/* glass levels */
+body[data-glass="clear"] { --nv-glass: var(--nv-glass-clear); }
+body[data-glass="soft"] { --nv-glass: var(--nv-glass-soft); }
+body[data-glass="solid"] { --nv-glass: var(--nv-glass-solid); }
+body[data-glass="ultra"] { --nv-glass: var(--nv-glass-ultra); }
+
+/* motion themes per spec #47 */
+body[data-theme="aurora"] { --nv-theme-arc: 0.45; --nv-theme-blur: 1.1; }
+body[data-theme="orbit"] { --nv-theme-arc: 1.0; --nv-theme-blur: 1; }
+body[data-theme="liquid"] { --nv-theme-arc: 0.5; --nv-theme-blur: 1.15; }
+body[data-theme="crystal"] { --nv-theme-arc: 0.7; --nv-theme-blur: 0.9; }
+body[data-theme="minimal"] { --nv-theme-arc: 0; --nv-theme-blur: 0; }
+body[data-theme="neon"] { --nv-theme-arc: 0.6; --nv-theme-blur: 0.7; }
+
+/* performance modes per spec #48 */
+body[data-performance="ultra"] { --nv-perf-blur: 22px; --nv-perf-particles: 1; }
+body[data-performance="balanced"] { --nv-perf-blur: 12px; --nv-perf-particles: 1; }
+body[data-performance="performance"] { --nv-perf-blur: 4px; --nv-perf-particles: 0; }
+body[data-performance="battery"] { --nv-perf-blur: 0px; --nv-perf-particles: 0; }
+body[data-performance="reduced"] { --nv-perf-blur: 0px; --nv-perf-particles: 0; }
+
+/* typography — Arabic + Latin per spec #18 */
+:root {
+  --nv-font-arabic: "IBM Plex Sans Arabic", "Cairo", "Noto Sans Arabic", system-ui, sans-serif;
+  --nv-font-latin: "Inter", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --nv-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  
+  --nv-text-display: 40px;
+  --nv-text-title: 26px;
+  --nv-text-heading: 19px;
+  --nv-text-body: 16px;
+  --nv-text-label: 14px;
+  --nv-text-caption: 12px;
+}
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body {
   margin: 0;
   min-height: 100%;
-  background: #05060a;
-  color: #f4f6fa;
-  font-family: "IBM Plex Sans Arabic", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--nv-bg, #06070A);
+  color: var(--nv-text, #F4F6FA);
+  font-family: var(--nv-font-arabic);
   overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-body[data-mode="light"] { background: #ece5da; color: #1c1a16; }
+body[data-mode="light"] { background: var(--nv-bg); color: var(--nv-text); }
 
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
-code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85em; opacity: .8; }
+code { font-family: var(--nv-font-mono); font-size: .85em; opacity: .8; }
+
+/* focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--nv-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* high contrast */
+body[data-high-contrast="1"] {
+  --nv-line: rgba(244,246,250,.24);
+  --nv-line-strong: rgba(244,246,250,.4);
+  --nv-text-2: #B8C0CC;
+}
+
+/* large text */
+body[data-large-text="1"] {
+  font-size: 110%;
+}
+
+/* reduce transparency */
+body[data-reduce-transparency="1"] {
+  --nv-glass: var(--nv-surface);
+  --nv-glass-clear: var(--nv-surface);
+  --nv-glass-soft: var(--nv-surface);
+  --nv-glass-ultra: var(--nv-surface);
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --nv-fast: 1ms;
+    --nv-normal: 1ms;
+    --nv-slow: 1ms;
+    --nv-long: 1ms;
+  }
+}
+
+body[data-motion="reduced"] {
+  --nv-fast: 1ms;
+  --nv-normal: 100ms;
+  --nv-slow: 150ms;
+  --nv-long: 200ms;
+}
+
+body[data-motion="reduced"] * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}

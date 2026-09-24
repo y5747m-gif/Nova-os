@@ -46,6 +46,23 @@ import { createDnd } from './surfaces/dnd.js';
 import { mountSetup } from './surfaces/setup.js';
 import { playAppLaunch, canPlayLaunch, popRect } from './surfaces/launch.js';
 
+/* ── NOVA OS Complete System ─────────────────────────────────── */
+import { NovaTokens } from './nova/tokens/tokens.js';
+import { glassManager, GlassLevels, createGlass } from './nova/glass/glass.js';
+import { shapeSystem, createShape, NovaOrb as NovaOrbShape } from './nova/shapes/shapes.js';
+import { NovaMotionAPI, TextMotion } from './nova/motion/motion-api.js';
+import { performanceManager, PerformanceModes } from './nova/performance/performance.js';
+import { gestureEngine } from './nova/gesture/gesture.js';
+import { textMotion } from './nova/text/text-motion.js';
+import { hapticsEngine } from './nova/haptics/haptics.js';
+import { audioEngine } from './nova/audio/audio.js';
+import { findEngine } from './nova/find/find.js';
+import { spacesManager } from './nova/spaces/spaces.js';
+import { securityCenter } from './nova/security/security.js';
+import { aiEngine } from './nova/ai/ai.js';
+import { settingsManager } from './nova/settings/settings.js';
+import { NovaOS, initNovaSystems, systemHealthCheck } from './nova/index.js';
+
 /* ── element handles ───────────────────────────────────────────── */
 const screen = document.getElementById('screen');
 const L = {
@@ -1291,6 +1308,60 @@ try {
   L.home.addEventListener('pointerup', cancelPress);
   L.home.addEventListener('pointercancel', cancelPress);
 } catch { /* ignore */ }
+
+/* ── NOVA OS Complete System Initialization ──────────────── */
+try {
+  console.log(`%c${NovaOS.name} ${NovaOS.version} — ${NovaOS.experience}`, 'color: #6C5CE7; font-weight: 700;');
+  settingsManager.applyAll();
+  performanceManager.startMonitoring();
+  
+  // Apply adaptive glass
+  const adaptiveGlass = performanceManager.selectAdaptiveGlassLevel();
+  glassManager.setLevel(adaptiveGlass);
+  glassManager.setAdaptive(true);
+  
+  // Listen for performance changes
+  performanceManager.onChange((state) => {
+    const glassLevel = performanceManager.selectAdaptiveGlassLevel();
+    if (glassManager.adaptive) {
+      glassManager.setLevel(glassLevel);
+    }
+    document.body.dataset.performance = state.mode;
+    document.body.dataset.thermal = state.thermal;
+  });
+  
+  // Listen for settings changes
+  settingsManager.onChange((section, key, value) => {
+    console.log(`NOVA Settings: ${section}.${key} = ${value}`);
+  });
+  
+  // System health check
+  setTimeout(() => {
+    systemHealthCheck();
+  }, 1000);
+  
+  // Expose NOVA systems globally
+  window.NovaOS = NovaOS;
+  window.NovaSystems = {
+    tokens: NovaTokens,
+    glass: { manager: glassManager, levels: GlassLevels, create: createGlass },
+    shapes: { system: shapeSystem, create: createShape, Orb: NovaOrbShape },
+    motion: NovaMotionAPI,
+    textMotion,
+    performance: performanceManager,
+    gesture: gestureEngine,
+    haptics: hapticsEngine,
+    audio: audioEngine,
+    find: findEngine,
+    spaces: spacesManager,
+    security: securityCenter,
+    ai: aiEngine,
+    settings: settingsManager,
+  };
+  
+} catch (e) {
+  console.warn('NOVA Systems init warning:', e);
+}
 
 buildDeck();
 // Android owns the secure lock screen; a launcher starts directly at home.

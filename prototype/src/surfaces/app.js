@@ -71,6 +71,13 @@ export function contentFor(appId, ctx = {}) {
     case 'wear': return wearContent();
     case 'files': return filesContent();
     case 'terminal': return terminalContent(ctx);
+    case 'find': return findContent(ctx);
+    case 'spaces': return spacesContent(ctx);
+    case 'security': return securityContent(ctx);
+    case 'ai': return aiContent(ctx);
+    case 'control': return controlContent(ctx);
+    case 'canvas': return canvasContent(ctx);
+    case 'flow': return flowContent(ctx);
     default: return genericContent(meta, ctx);
   }
 }
@@ -1319,6 +1326,229 @@ function terminalContent(ctx) {
       class: 'term__form', dataset: { nodrag: '1' },
       onsubmit: (e) => { e.preventDefault(); run(input.value); input.value = ''; },
     }, h('span', { class: 'term__prompt' }, '›'), input),
+  );
+}
+
+/* ── NOVA FIND ─────────────────────────────────────────────────── */
+function findContent(ctx) {
+  const wrap = h('div', { class: 'nova-find-wrapper', style: { height: '100%', position: 'relative' } });
+  setTimeout(() => {
+    try {
+      const { findEngine } = require('../nova/find/find.js');
+      // Dynamic import fallback
+      import('../nova/find/find.js').then(mod => {
+        mod.findEngine.createSurface(wrap, {
+          onSelect: (item) => {
+            ctx.toast?.(`فتح ${item.title}`);
+            if (item.action) {
+              const action = item.action();
+              if (action.type === 'openApp') {
+                ctx.openApp?.(action.appId, null);
+              } else if (action.type === 'openSettings') {
+                ctx.openApp?.('settings', null);
+              }
+            }
+          }
+        });
+      }).catch(() => {
+        // Fallback simple search UI
+        wrap.innerHTML = `
+          <div style="padding: 20px;">
+            <div style="display: flex; gap: 12px; padding: 14px; border-radius: 16px; background: var(--nv-glass); border: 1px solid var(--nv-line);">
+              <span>◉</span>
+              <input placeholder="ابحث..." style="flex:1; background:none; border:0; outline:none; color: var(--nv-text);" />
+            </div>
+            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+              ${Object.values(APPS).slice(0, 6).map(app => `
+                <div style="padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.04); display: flex; gap: 10px; align-items: center;">
+                  <span style="color: ${app.color}">◉</span>
+                  <span>${app.name}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+    } catch {
+      // Simple fallback
+    }
+  }, 100);
+  return wrap;
+}
+
+/* ── NOVA SPACES ───────────────────────────────────────────────── */
+function spacesContent(ctx) {
+  const wrap = h('div', { class: 'nova-spaces-wrapper', style: { height: '100%', overflow: 'auto' } });
+  setTimeout(() => {
+    import('../nova/spaces/spaces.js').then(mod => {
+      mod.spacesManager.createSurface(wrap, {
+        onSwitch: (space) => {
+          ctx.toast?.(`تم التبديل إلى مساحة ${space.name}`);
+        },
+        onCreate: (space) => {
+          ctx.toast?.(`تم إنشاء مساحة ${space.name}`);
+        }
+      });
+    }).catch(() => {
+      wrap.innerHTML = '<div style="padding: 20px;">مساحات NOVA — Work, Personal, Study, Travel, Gaming</div>';
+    });
+  }, 100);
+  return wrap;
+}
+
+/* ── NOVA SECURITY ─────────────────────────────────────────────── */
+function securityContent(ctx) {
+  const wrap = h('div', { class: 'nova-security-wrapper', style: { height: '100%', overflow: 'auto' } });
+  setTimeout(() => {
+    import('../nova/security/security.js').then(mod => {
+      mod.securityCenter.createSurface(wrap, {});
+    }).catch(() => {
+      wrap.innerHTML = `
+        <div style="padding: 20px;">
+          <h3>مركز الأمان</h3>
+          <p>الأذونات · الخصوصية · التشفير · وصول التطبيقات</p>
+          <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="padding: 12px; border-radius: 12px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2);">
+              🔒 التشفير مفعّل — file-based
+            </div>
+            <div style="padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.04);">
+              📷 الكاميرا — 3 تطبيقات لديها إذن
+            </div>
+            <div style="padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.04);">
+              🎤 الميكروفون — تطبيق واحد لديه إذن
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  }, 100);
+  return wrap;
+}
+
+/* ── NOVA AI ───────────────────────────────────────────────────── */
+function aiContent(ctx) {
+  const wrap = h('div', { class: 'nova-ai-wrapper', style: { height: '100%', position: 'relative' } });
+  setTimeout(() => {
+    import('../nova/ai/ai.js').then(mod => {
+      mod.aiEngine.createSurface(wrap, {
+        onAction: (action) => {
+          ctx.toast?.(`AI: ${action.label}`);
+          if (action.intent === 'openLastWorkspace') {
+            ctx.toast?.('فتح آخر مساحة');
+          } else if (action.intent === 'openSettings') {
+            ctx.openApp?.('settings', null);
+          }
+        }
+      });
+    }).catch(() => {
+      wrap.innerHTML = `
+        <div style="padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 20px;">
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #6C5CE7, #22D3EE);"></div>
+          <h3>NOVA AI</h3>
+          <p style="text-align: center; color: var(--nv-text-2);">المساعد الذكي — جزء من النظام<br/>يمكنك الكتابة، التحدث، رفع ملف، طلب Action</p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button style="padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,0.06); font-size: 12px;">افتح آخر مساحة</button>
+            <button style="padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,0.06); font-size: 12px;">ابحث عن الصور</button>
+          </div>
+        </div>
+      `;
+    });
+  }, 100);
+  return wrap;
+}
+
+/* ── NOVA CONTROL ──────────────────────────────────────────────── */
+function controlContent(ctx) {
+  return h('div', { class: 'simple', style: { padding: '20px' } },
+    h('h3', {}, 'NOVA CONTROL'),
+    h('p', {}, 'مركز التحكم — Glass Canvas مع عناصر تفاعلية'),
+    h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' } },
+      h('div', { style: { padding: '16px', borderRadius: '16px', background: 'var(--nv-glass)', border: '1px solid var(--nv-line)', textAlign: 'center' } },
+        h('div', { style: { width: '48px', height: '48px', borderRadius: '50%', background: '#6C5CE7', margin: '0 auto 8px', display: 'grid', placeItems: 'center', color: 'white' } }, '◉'),
+        h('div', { style: { fontSize: '12px' } }, 'Wi-Fi Orb')
+      ),
+      h('div', { style: { padding: '16px', borderRadius: '16px', background: 'var(--nv-glass)', border: '1px solid var(--nv-line)', textAlign: 'center' } },
+        h('div', { style: { width: '48px', height: '48px', borderRadius: '50%', border: '3px solid #22D3EE', margin: '0 auto 8px', display: 'grid', placeItems: 'center' } }, '72%'),
+        h('div', { style: { fontSize: '12px' } }, 'Battery Ring')
+      ),
+      h('div', { style: { padding: '16px', borderRadius: '16px', background: 'var(--nv-glass)', border: '1px solid var(--nv-line)', textAlign: 'center' } },
+        h('div', { style: { width: '60px', height: '30px', borderRadius: '15px 15px 0 0', border: '3px solid #F5A524', borderBottom: '0', margin: '0 auto 8px' } }, ''),
+        h('div', { style: { fontSize: '12px' } }, 'Brightness Arc')
+      ),
+      h('div', { style: { padding: '16px', borderRadius: '16px', background: 'var(--nv-glass)', border: '1px solid var(--nv-line)', textAlign: 'center' } },
+        h('div', { style: { width: '12px', height: '12px', borderRadius: '50%', background: '#FF6B9A', margin: '0 auto 8px' } }, ''),
+        h('div', { style: { fontSize: '12px' } }, 'Airplane Node')
+      )
+    )
+  );
+}
+
+/* ── NOVA CANVAS ENHANCED ──────────────────────────────────────── */
+function canvasContent(ctx) {
+  return h('div', { class: 'simple', style: { padding: '20px' } },
+    h('h3', {}, 'NOVA CANVAS'),
+    h('p', {}, 'تعدد المهام — Cards لها Depth, Shadow, Glass, Motion, Position'),
+    h('div', { style: { marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' } },
+      ...state.windows.map(w => {
+        const meta = appMeta(w.appId);
+        return h('div', { 
+          style: { 
+            padding: '12px', 
+            borderRadius: '14px', 
+            background: 'var(--nv-glass)', 
+            border: '1px solid var(--nv-line)',
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'center'
+          } 
+        },
+          h('span', { style: { color: meta.color } }, '◉'),
+          h('span', {}, meta.name),
+          h('span', { style: { marginInlineStart: 'auto', fontSize: '11px', color: 'var(--nv-text-2)' } }, `x:${w.x} y:${w.y}`)
+        );
+      })
+    )
+  );
+}
+
+/* ── NOVA FLOW ENHANCED ────────────────────────────────────────── */
+function flowContent(ctx) {
+  return h('div', { class: 'simple', style: { padding: '20px' } },
+    h('h3', {}, 'NOVA FLOW'),
+    h('p', {}, 'نظام الإشعارات — Glass Event Card يظهر بطريقة Orb → Card → Event'),
+    h('div', { style: { marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' } },
+      ...state.events.slice(0, 5).map(evt => 
+        h('div', { 
+          style: { 
+            padding: '14px', 
+            borderRadius: '16px', 
+            background: 'var(--nv-glass)', 
+            border: '1px solid var(--nv-line)',
+            backdropFilter: 'blur(16px)'
+          } 
+        },
+          h('div', { style: { display: 'flex', gap: '10px', alignItems: 'center' } },
+            h('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: evt.color || 'var(--nv-accent)', display: 'block' } }),
+            h('b', { style: { fontSize: '13px' } }, evt.who),
+            h('small', { style: { marginInlineStart: 'auto', color: 'var(--nv-text-2)', fontSize: '11px' } }, new Date(evt.t).toLocaleTimeString('ar'))
+          ),
+          h('div', { style: { fontSize: '13px', marginTop: '8px', lineHeight: '1.6' } }, evt.body),
+          h('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } },
+            ...(evt.actions || []).map(action => 
+              h('button', { 
+                style: { 
+                  padding: '6px 12px', 
+                  borderRadius: '999px', 
+                  background: 'rgba(255,255,255,0.06)', 
+                  border: '1px solid var(--nv-line)',
+                  fontSize: '11px'
+                } 
+              }, action)
+            )
+          )
+        )
+      )
+    )
   );
 }
 
