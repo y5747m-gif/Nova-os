@@ -85,6 +85,11 @@ class NovaPerformanceManager {
     this.listeners = new Set();
     this.fpsHistory = [];
     this.monitoring = false;
+    this.monitorRaf = 0;
+    this.visibilityHandler = () => {
+      if (document.hidden) this.stopMonitoring();
+      else this.startMonitoring();
+    };
     this.init();
   }
 
@@ -92,7 +97,7 @@ class NovaPerformanceManager {
     // Detect system preferences
     try {
       this.state.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-      this.state.batterySaver = navigator.getBattery ? false : false;
+      this.state.batterySaver = false;
       
       if (navigator.getBattery) {
         navigator.getBattery().then(battery => {
@@ -120,8 +125,10 @@ class NovaPerformanceManager {
       // Check for low-end via user agent hints
       this.detectLowEndDevice();
 
-      // Start monitoring
-      this.startMonitoring();
+      // Pause the monitor while the document is hidden. This prevents a
+      // background RAF loop from consuming CPU on the launcher/web prototype.
+      document.addEventListener?.('visibilitychange', this.visibilityHandler, { passive: true });
+      if (!document.hidden) this.startMonitoring();
     } catch {}
   }
 
@@ -172,10 +179,12 @@ class NovaPerformanceManager {
     try {
       const level = battery.level;
       const charging = battery.charging;
-      if (!charging && level < 0.2) {
+      // The Web Battery API does not expose Android's real Battery Saver state.
+      // Treat a critically low, non-charging battery as a local visual policy only.
+      if (!charging && level < 0.15) {
         this.setMode('battery');
         this.state.batterySaver = true;
-      } else if (this.state.batterySaver && level > 0.3) {
+      } else if (this.state.batterySaver && (charging || level > 0.25)) {
         this.state.batterySaver = false;
         if (this.state.mode === 'battery') this.setMode('balanced');
       }
@@ -245,14 +254,15 @@ class NovaPerformanceManager {
         this.notify();
       }
       
-      requestAnimationFrame(check);
+      this.monitorRaf = requestAnimationFrame(check);
     };
     
-    requestAnimationFrame(check);
+    this.monitorRaf = requestAnimationFrame(check);
   }
 
   stopMonitoring() {
     this.monitoring = false;
+    if (this.monitorRaf) { cancelAnimationFrame(this.monitorRaf); this.monitorRaf = 0; }
   }
 
   setMode(mode) {
