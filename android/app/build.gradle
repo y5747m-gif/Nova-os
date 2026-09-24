@@ -84,9 +84,21 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
     implementation 'androidx.webkit:webkit:1.11.0'
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    
+    // Compose for NOVA OS System UI (per spec #2)
+    implementation 'androidx.compose.ui:ui:1.6.8'
+    implementation 'androidx.compose.material3:material3:1.2.1'
+    implementation 'androidx.compose.animation:animation:1.6.8'
+    implementation 'androidx.compose.foundation:foundation:1.6.8'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
 
     /* NOVA MOTION golden curves — the Kotlin port of the JS engine
        (os.nova.motion) is asserted against tools/golden-curves.mjs.
        Run: gradle testDebugUnitTest (CI does it before every APK build). */
     testImplementation 'junit:junit:4.13.2'
+    
+    // NOVA OS modules tests
+    testImplementation 'androidx.arch.core:core-testing:2.2.0'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1'
 }

@@ -7,7 +7,7 @@
    NOVA_VERSION must match src/core/version.js and /VERSION.
    ══════════════════════════════════════════════════════════════ */
 
-const NOVA_VERSION = '0.9.0';
+const NOVA_VERSION = '1.0.0';
 const CACHE = `nova-shell-${NOVA_VERSION}`;
 
 const SHELL = [
@@ -15,6 +15,7 @@ const SHELL = [
   './index.html',
   './manifest.webmanifest',
   './styles/tokens.css',
+  './styles/nova.css',
   './styles/shell.css',
   './styles/shell-android.css',
   './styles/surfaces.css',
@@ -36,6 +37,21 @@ const SHELL = [
   './src/motion/motion.js',
   './src/motion/gestures.js',
   './src/motion/fx.js',
+  './src/nova/tokens/tokens.js',
+  './src/nova/glass/glass.js',
+  './src/nova/shapes/shapes.js',
+  './src/nova/motion/motion-api.js',
+  './src/nova/performance/performance.js',
+  './src/nova/gesture/gesture.js',
+  './src/nova/text/text-motion.js',
+  './src/nova/haptics/haptics.js',
+  './src/nova/audio/audio.js',
+  './src/nova/find/find.js',
+  './src/nova/spaces/spaces.js',
+  './src/nova/security/security.js',
+  './src/nova/ai/ai.js',
+  './src/nova/settings/settings.js',
+  './src/nova/index.js',
   './src/surfaces/home.js',
   './src/surfaces/app.js',
   './src/surfaces/core.js',

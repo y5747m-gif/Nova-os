@@ -45,6 +45,13 @@ export const APPS = {
   privacy:   { id: 'privacy',   name: 'مركز الخصوصية',  kind: 'privacy',  icon: 'shield',   color: '#7dd3fc', sub: 'استخدام الحساسات',          title: 'مركز الخصوصية',  titleSub: 'آخر 24 ساعة' },
   settings:  { id: 'settings',  name: 'الإعدادات',      kind: 'settings', icon: 'settings', color: '#6c5ce7', sub: 'الخلفية · المظهر · الحركة', title: 'الإعدادات',      titleSub: 'خصّص NOVA' },
   terminal:  { id: 'terminal',  name: 'الطرفية',        kind: 'terminal', icon: 'terminal', color: '#4ade80', sub: 'سطر أوامر NOVA',            title: 'الطرفية',        titleSub: 'nova@os' },
+  find:      { id: 'find',      name: 'البحث',          kind: 'find',     icon: 'search',   color: '#6c5ce7', sub: 'NOVA FIND · كل شيء',        title: 'البحث',          titleSub: 'NOVA FIND' },
+  spaces:    { id: 'spaces',    name: 'المساحات',       kind: 'spaces',   icon: 'layers',   color: '#22d3ee', sub: 'NOVA SPACES · Workspaces',   title: 'المساحات',       titleSub: 'NOVA SPACES' },
+  security:  { id: 'security',  name: 'الأمان',         kind: 'security', icon: 'shield',   color: '#ff5c5c', sub: 'NOVA SECURITY CENTER',       title: 'الأمان',         titleSub: 'NOVA SECURITY' },
+  ai:        { id: 'ai',        name: 'المساعد الذكي',  kind: 'ai',       icon: 'ai',       color: '#a78bfa', sub: 'NOVA AI · مساعد ذكي',       title: 'NOVA AI',        titleSub: 'المساعد الذكي' },
+  control:   { id: 'control',   name: 'التحكم',         kind: 'control',  icon: 'controls', color: '#f5a524', sub: 'NOVA CONTROL',               title: 'التحكم',        titleSub: 'NOVA CONTROL' },
+  canvas:    { id: 'canvas',    name: 'المساحة',        kind: 'canvas',   icon: 'grid',     color: '#4ade80', sub: 'NOVA CANVAS · النوافذ',     title: 'المساحة',        titleSub: 'NOVA CANVAS' },
+  flow:      { id: 'flow',      name: 'الأحداث',        kind: 'flow',     icon: 'bell',     color: '#ff6b9a', sub: 'NOVA FLOW · الإشعارات',     title: 'الأحداث',        titleSub: 'NOVA FLOW' },
 };
 
 export const CONTACTS = [
